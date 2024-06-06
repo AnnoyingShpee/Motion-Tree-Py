@@ -1,0 +1,32 @@
+# The default parameters to be use when running.
+# File name for first chain
+#
+filename1=4ake.pdb
+#
+# One-letter code for 1st chain ID if it exists, otherwise leave blank
+#
+chain1id=A
+#
+# Write file name for 2nd chain, may be the same as first
+#
+filename2=2eck.pdb
+#
+# One-letter code for 2nd chain ID
+#
+chain2id=B
+#
+# The atom to use for the main motion tree building.
+#
+atom=ca
+#
+# The inter-residue contact information
+#
+threshold=7
+#
+# The default linkage to use for the agglomerative clustering.
+#
+linkage=single
+#
+# The average number of largest distance differences.
+#
+avg_diff=20

@@ -1,0 +1,5 @@
+# The path for storing the pdb files
+input_path=data/input/pdb
+#
+# The path for storing the program's output
+output_path=data/output/pdb
