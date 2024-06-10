@@ -1,5 +1,17 @@
 # The path for storing the pdb files
-input_path=data/input/pdb
+input_path=data/input/pdb/
 #
 # The path for storing the program's output
-output_path=data/output/pdb
+output_path=data/output/pdb/
+#
+# Name for first chain
+protein1=1ipd
+#
+# One-letter code for 1st chain ID if it exists, otherwise leave blank
+chain1id=A
+#
+# Write name for 2nd chain, may be the same as first
+protein2=2eck
+#
+# One-letter code for 2nd chain ID
+chain2id=B
