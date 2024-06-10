@@ -20,6 +20,8 @@ def read_file_paths():
     except Exception as e:
         print(e)
 
+    temp_dict["protein1"] = temp_dict["protein1"].lower()
+    temp_dict["protein2"] = temp_dict["protein2"].lower()
     file_1 = temp_dict["input_path"] + temp_dict["protein1"] + ".pdb"
     file_2 = temp_dict["input_path"] + temp_dict["protein2"] + ".pdb"
 
@@ -68,14 +70,6 @@ def read_param_file():
         print(e)
         return None
     return temp_dict
-
-
-def ftp_read(file_1: str, file_2: str):
-    ftp = FTP("ftp://ftp.rcsb.org")
-    ftp.login()
-    ftp.dir()
-
-    ftp.close()
 
 
 # def write_rotation_vec_to_pdb(file_name: str, slide_window_residues, slide_window_indices, rotation_vectors):

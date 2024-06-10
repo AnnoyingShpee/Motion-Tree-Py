@@ -6,7 +6,7 @@ from Protein import Protein
 import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform
 import matplotlib.pyplot as plt
-
+import timeit
 
 class MotionTree:
     def __init__(self, files, params=None):
@@ -42,21 +42,25 @@ class MotionTree:
         self.bending_residues = set()
 
     def run(self):
-        dist_diff_mat = self.first_hierarchical_clustering()
+        # dist_diff_mat = self.first_hierarchical_clustering()
         # print(self.clusters)
-        if type(dist_diff_mat) == int:
-            print("No cluster pair found.")
-            sys.exit()
+        # if type(dist_diff_mat) == int:
+        #     print("No cluster pair found.")
+        #     sys.exit()
 
+        dist_diff_mat = np.copy(self.dist_diff_mat_init)
         while len(self.clusters) > 1:
+            start = timeit.default_timer()
             dist_diff_mat = self.hierarchical_clustering(dist_diff_mat)
+            end = timeit.default_timer()
+            print("Time:", end - start)
+            print(self.clusters)
             if type(dist_diff_mat) == int:
                 print("No cluster pair found")
                 print(dist_diff_mat)
                 print(self.clusters)
                 print(len(self.clusters))
                 break
-
 
         # self.plot_clusters(self.protein_1.main_atoms_coords, self.clusters)
 
@@ -69,48 +73,50 @@ class MotionTree:
         # condensed_dist_diff = squareform(1-dist_diff_mat, force="tovector", checks=False)
         # print(condensed_dist_diff)
         # print(condensed_dist_diff.shape)
-        sch.dendrogram(sch.linkage(dist_diff_mat))
-        # plt.matshow(dist_diff_mat)
-        plt.show()
+        sch.dendrogram(sch.linkage(squareform(dist_diff_mat, force="tovector", checks=False)))
+        plt.savefig(f"data/output/dendrograms/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_dendro.png")
+        plt.matshow(dist_diff_mat)
+        plt.savefig(f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
 
     def create_difference_distance_matrix(self):
         return np.absolute(self.protein_1.distance_matrix - self.protein_2.distance_matrix)
 
-    def first_hierarchical_clustering(self):
-        new_dist_diff_mat = None
-        visited_clusters = []
-        while new_dist_diff_mat is None:
-            cluster_pair = self.closest_clusters(self.dist_diff_mat_init, visited_clusters)
-            if cluster_pair is None:
-                return -1
-            visited_clusters.append(cluster_pair)
-            if not self.spatial_proximity_measure(cluster_pair):
-                print("Spatial proximity not met")
-                continue
-            self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
-            new_dist_diff_mat = self.update_distance_matrix(self.dist_diff_mat_init, cluster_pair)
-            del self.clusters[cluster_pair[1]]
-
-        return new_dist_diff_mat
+    # def first_hierarchical_clustering(self):
+    #     new_dist_diff_mat = None
+    #     visited_clusters = []
+    #     while new_dist_diff_mat is None:
+    #         cluster_pair = self.closest_clusters(self.dist_diff_mat_init, visited_clusters)
+    #         if cluster_pair is None:
+    #             return -1
+    #         visited_clusters.append(cluster_pair)
+    #         if not self.spatial_proximity_measure(cluster_pair):
+    #             print("Spatial proximity not met")
+    #             continue
+    #         self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
+    #         new_dist_diff_mat = self.update_distance_matrix(self.dist_diff_mat_init, cluster_pair)
+    #         del self.clusters[cluster_pair[1]]
+    #
+    #     return new_dist_diff_mat
 
     def hierarchical_clustering(self, dist_diff_mat):
-        new_dist_diff_mat = dist_diff_mat
         visited_clusters = []
         cluster_found = False
         while not cluster_found:
-            cluster_pair = self.closest_clusters(new_dist_diff_mat, visited_clusters)
+            # print("Finding closest clusters")
+            cluster_pair = self.closest_clusters(dist_diff_mat, visited_clusters)
             if cluster_pair is None:
                 print("No cluster pair found")
                 return -1
             visited_clusters.append(cluster_pair)
+            # print("Checking spatial proximity")
             if not self.spatial_proximity_measure(cluster_pair):
                 # print("Spatial proximity not met")
                 continue
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
-            cluster_found = True
-            new_dist_diff_mat = self.update_distance_matrix(new_dist_diff_mat, cluster_pair)
+            # print("Update distance matrix")
+            new_dist_diff_mat = self.update_distance_matrix(dist_diff_mat, cluster_pair)
             del self.clusters[cluster_pair[1]]
-        return new_dist_diff_mat
+            return new_dist_diff_mat
 
     def closest_clusters(self, diff_dist_matrix: np.array, visited_clusters):
         min_distance = np.inf
