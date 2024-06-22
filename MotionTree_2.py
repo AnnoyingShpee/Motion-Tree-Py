@@ -48,8 +48,9 @@ class MotionTree2:
     def run(self):
         start = timeit.default_timer()
         dist_diff_mat = np.copy(self.dist_diff_mat_init)
+        n = 0
         while len(self.clusters) > 1:
-            dist_diff_mat = self.hierarchical_clustering(dist_diff_mat)
+            dist_diff_mat = self.hierarchical_clustering(dist_diff_mat, n)
             # print(self.clusters)
             if type(dist_diff_mat) == int:
                 print("No cluster pair found")
@@ -57,10 +58,13 @@ class MotionTree2:
                 print(self.clusters)
                 print(len(self.clusters))
                 break
+            n += 1
 
         end = timeit.default_timer()
-        # print(self.clusters)
+        print(self.clusters)
+        # print(np.unique(self.clusters[0], return_counts=True))
         print("Time:", end - start)
+        return self.clusters
         # self.plot_clusters(self.protein_1.main_atoms_coords, self.clusters)
 
         # print("Initial")
@@ -76,7 +80,7 @@ class MotionTree2:
         # sch.dendrogram(sch.linkage(squareform(dist_diff_mat, force="tovector", checks=False)))
         # sch.dendrogram(linkage_mat)
         # plt.show()
-        plt.matshow(self.dist_diff_mat_init)
+        # plt.matshow(self.dist_diff_mat_init)
         # plt.savefig("Init.png")
         # plt.matshow(dist_diff_mat)
         # plt.show()
@@ -97,7 +101,7 @@ class MotionTree2:
             f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
         np.fill_diagonal(self.dist_diff_mat_init, np.inf)
 
-    def hierarchical_clustering(self, dist_diff_mat):
+    def hierarchical_clustering(self, dist_diff_mat, n):
         """
         Perform hierarchical clustering using the distance difference matrix.
         :param dist_diff_mat:
@@ -107,15 +111,18 @@ class MotionTree2:
         while True:
             # print("Finding the closest clusters")
             # Find the closest pairs of clusters.
-            cluster_pair = self.get_closest_clusters(dist_diff_mat, visited_clusters)
+            cluster_pair, min_dist = self.get_closest_clusters(dist_diff_mat, visited_clusters, n)
             # If no cluster pairs are found, exit early
             if cluster_pair is None:
                 print("No cluster pair found")
                 return -1
+            # if n > 230:
+            #     print(cluster_pair)
             # print("Checking spatial proximity")
             # When cluster pair is found, check if at least one Ca atom pair between the cluster pair meets the spatial
             # proximity measure.
-            if not self.spatial_proximity_measure(cluster_pair):
+            spatial_met = self.spatial_proximity_measure(cluster_pair)
+            if not spatial_met:
                 # print("Spatial proximity not met")
                 # If spatial proximity measure is not met, add it to the list of visited clusters. This cluster pair
                 # will be ignored in the next iteration when looking for the minimum value.
@@ -124,6 +131,7 @@ class MotionTree2:
                 else:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
+            # print(n, cluster_pair)
             # Add cluster 1 points to cluster 0.
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
@@ -133,7 +141,7 @@ class MotionTree2:
             del self.clusters[cluster_pair[1]]
             return new_dist_diff_mat
 
-    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters):
+    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters, n):
         """
         Using the difference distance matrix, find the closest clusters. If the cluster pair has already been checked,
         ignore it and find another one.
@@ -141,17 +149,28 @@ class MotionTree2:
         :param visited_clusters: An array of visited cluster pairs
         :return:
         """
-        # Create a copy of the matrix for dealing with visited clusters
+        # Create a copy of the difference distance matrix for dealing with visited clusters
         diff_dist_copy = np.copy(diff_dist_matrix)
         # Set values at the visited cluster indices as infinity so that the next minimum values will be found
         if visited_clusters is not None:
+            # If visited clusters are np.array([[3, 5], [7, 10]])
+            # The matrix at [3, 5], [5, 3], [7, 10], and [10, 7] will need to be set as infinity.
             rows = np.concatenate((visited_clusters[:, 0], visited_clusters[:, 1]))
             cols = np.concatenate((visited_clusters[:, 1], visited_clusters[:, 0]))
+            # https://stackoverflow.com/questions/7761393/how-to-modify-a-2d-numpy-array-at-specific-locations-without-a-loop
+            # diff_dist_copy[[3, 7, 5, 10], [5, 10, 3, 7]]
             diff_dist_copy[rows, cols] = np.inf
+        # if n == 78:
+        #     write_clustering("1oj7_2", f"Visited {visited_clusters}", append=True)
+            # write_clustering("1oj7_2", f"The copy {diff_dist_copy[203, 286]}", append=True)
         # print(np.unravel_index(np.argmin(diff_dist_copy, axis=None), diff_dist_copy.shape))
+        # Get the index of the cluster pair with the smallest value.
+        # np.argmin gets the index of the minimum value. axis=None means that the array is flattened.
+        # np.unravel_index gets the 2D index by specifying the shape of the array
+        # https://stackoverflow.com/questions/48135736/what-is-an-intuitive-explanation-of-np-unravel-index
         cluster_pair = np.unravel_index(np.argmin(diff_dist_copy, axis=None), diff_dist_copy.shape)
 
-        return list(cluster_pair)
+        return list(cluster_pair), np.min(diff_dist_copy, axis=None)
 
     def spatial_proximity_measure(self, cluster_pair):
         """
@@ -168,10 +187,6 @@ class MotionTree2:
 
         protein_1_distances = cdist(protein_1_cluster_1_coords, protein_1_cluster_2_coords)
         protein_2_distances = cdist(protein_2_cluster_1_coords, protein_2_cluster_2_coords)
-
-        if protein_1_distances.shape[0] > 1:
-            np.fill_diagonal(protein_1_distances, np.inf)
-            np.fill_diagonal(protein_2_distances, np.inf)
 
         return np.min(protein_1_distances) < self.parameters["threshold"] and np.min(protein_2_distances) < self.parameters["threshold"]
 

@@ -48,8 +48,9 @@ class MotionTreeInit:
     def run(self):
         start = timeit.default_timer()
         dist_diff_mat = np.copy(self.dist_diff_mat_init)
+        n = 0
         while len(self.clusters) > 1:
-            dist_diff_mat = self.hierarchical_clustering(dist_diff_mat)
+            dist_diff_mat = self.hierarchical_clustering(dist_diff_mat, n)
             # print(self.clusters)
             if type(dist_diff_mat) == int:
                 print("No cluster pair found")
@@ -57,9 +58,12 @@ class MotionTreeInit:
                 print(self.clusters)
                 print(len(self.clusters))
                 break
+            n += 1
         end = timeit.default_timer()
-        # print(self.clusters)
+        print(self.clusters)
+        # print(np.unique(self.clusters[0], return_counts=True))
         print("Time:", end - start)
+        return self.clusters
 
     def create_difference_distance_matrix(self):
         """
@@ -73,7 +77,7 @@ class MotionTreeInit:
             f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
         np.fill_diagonal(self.dist_diff_mat_init, np.inf)
 
-    def hierarchical_clustering(self, dist_diff_mat):
+    def hierarchical_clustering(self, dist_diff_mat, n):
         """
         Perform hierarchical clustering using the distance difference matrix.
         :param dist_diff_mat:
@@ -83,22 +87,26 @@ class MotionTreeInit:
         cluster_found = False
         while not cluster_found:
             # print("Finding the closest clusters")
-            cluster_pair = self.get_closest_clusters(dist_diff_mat, visited_clusters)
+            cluster_pair, min_dist = self.get_closest_clusters(dist_diff_mat, visited_clusters, n)
             if cluster_pair is None:
                 print("No cluster pair found")
                 return -1
-            visited_clusters.append(cluster_pair)
+            # if n > 230:
+            #     print(cluster_pair)
             # print("Checking spatial proximity")
-            if not self.spatial_proximity_measure(cluster_pair):
+            spatial_met, clust_1, clust_2, min_dist_1, min_dist_2 = self.spatial_proximity_measure(cluster_pair)
+            if not spatial_met:
                 # print("Spatial proximity not met")
+                visited_clusters.append(cluster_pair)
                 continue
+            # print(n, cluster_pair)
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
             new_dist_diff_mat = self.update_distance_matrix(dist_diff_mat, cluster_pair)
             del self.clusters[cluster_pair[1]]
             return new_dist_diff_mat
 
-    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters):
+    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters, n):
         """
         Using the difference distance matrix, find the closest clusters. If the cluster pair has already been checked,
         ignore it and find another one.
@@ -114,7 +122,7 @@ class MotionTreeInit:
                     min_distance = diff_dist_matrix[i, j]
                     cluster_pair = (i, j)
 
-        return cluster_pair
+        return cluster_pair, min_distance
 
     def spatial_proximity_measure(self, cluster_pair):
         cluster_1_indices_list = self.clusters[cluster_pair[0]]

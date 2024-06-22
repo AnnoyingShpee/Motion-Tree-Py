@@ -1,23 +1,10 @@
 import sys
-import random
-from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtWidgets import QApplication
+from MotionTreeGUIWindow import MainWindow
 
 
-class GUI(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
+app = QApplication(sys.argv)
+window = MainWindow(app)
+window.show()
+app.exec()
 
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel("Hello World", alignment=QtCore.Qt.AlignCenter)
-
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
-
-        self.button.clicked.connect(self.magic)
-
-    @QtCore.Slot()
-    def magic(self):
-        self.text.setText(random.choice(self.hello))

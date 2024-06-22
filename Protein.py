@@ -2,6 +2,7 @@ import gemmi
 import pandas as pd
 import numpy as np
 from sklearn.metrics import pairwise_distances
+from scipy.spatial.distance import cdist
 """
 Gemmi follows a hierarchy:
 Structure -> Model -> Chain -> [ResidueSpan] -> Residue -> Atom
@@ -62,6 +63,9 @@ class Protein:
 
         return atom_coords, utilised_residue_nums
 
+    def get_distance_matrix(self):
+        self.distance_matrix = cdist(self.main_atoms_coords, self.main_atoms_coords, metric="euclidean")
+
     def get_structure(self):
         return gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
 
@@ -77,9 +81,6 @@ class Protein:
     def get_polymer(self):
         structure = gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
         return structure[0][self.chain_param].get_polymer()
-
-    def get_distance_matrix(self):
-        self.distance_matrix = pairwise_distances(self.main_atoms_coords, self.main_atoms_coords)
 
     def print_chain(self):
         print(f"{self.get_structure().name}({self.chain_param}) - {self.main_atoms_coords.shape}")

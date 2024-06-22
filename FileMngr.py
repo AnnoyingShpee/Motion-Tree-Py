@@ -72,6 +72,22 @@ def read_param_file():
     return temp_dict
 
 
+def write_clustering(file_name: str, data, append=True):
+    file_path = f"data/output/clustering/{file_name}.txt"
+
+    try:
+        if append:
+            fo = open(file_path, "a")
+        else:
+            fo = open(file_path, "w")
+        fo.write(data)
+        fo.write("\n")
+        fo.close()
+    except Exception as e:
+        print(e)
+        print(data)
+
+
 # def write_rotation_vec_to_pdb(file_name: str, slide_window_residues, slide_window_indices, rotation_vectors):
 #     """
 #     Writes the rotation vectors of each residue of the slide window into a input file
