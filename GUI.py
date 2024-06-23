@@ -1,10 +1,12 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from MotionTreeGUIWindow import MainWindow
+from GUIWindow import MainWindow
+from GUIWidget import MainWidget
 
 
 app = QApplication(sys.argv)
-window = MainWindow(app)
+widget = MainWidget()
+window = MainWindow(app, widget)
 window.show()
 app.exec()
 

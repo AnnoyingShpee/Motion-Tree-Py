@@ -72,11 +72,11 @@ def read_param_file():
     return temp_dict
 
 
-def write_clustering(file_name: str, data, append=True):
+def write_clustering(file_name: str, data, n=0):
     file_path = f"data/output/clustering/{file_name}.txt"
 
     try:
-        if append:
+        if n:
             fo = open(file_path, "a")
         else:
             fo = open(file_path, "w")
@@ -88,33 +88,6 @@ def write_clustering(file_name: str, data, append=True):
         print(data)
 
 
-# def write_rotation_vec_to_pdb(file_name: str, slide_window_residues, slide_window_indices, rotation_vectors):
-#     """
-#     Writes the rotation vectors of each residue of the slide window into a input file
-#     :param file_name:
-#     :param slide_window_residues:
-#     :param slide_window_indices:
-#     :param rotation_vectors:
-#     :return:
-#     """
-#     try:
-#         fw = open(f"{output_pdb_file_path}{file_name}_rot_vecs.input", "w")
-#         start_index = slide_window_indices[0]
-#         for r in range(len(slide_window_residues)):
-#             residue_name = slide_window_residues[r].name
-#             residue_num = str(start_index + r + 1).rjust(3, " ")
-#             x = str(round(rotation_vectors[r][0], 3)).rjust(8, " ")
-#             y = str(round(rotation_vectors[r][1], 3)).rjust(8, " ")
-#             z = str(round(rotation_vectors[r][2], 3)).rjust(8, " ")
-#             row = f"ATOM         CA  {residue_name} A {residue_num}    {x}{y}{z}\n"
-#             fw.write(row)
-#         fw.close()
-#     except Exception as e:
-#         print(e)
-#         return False
-#     return True
-#
-#
 # def write_pymol_file(pml_file_name: str, pdb_file_name: str, data):
 #     try:
 #         fw = open(f"{output_pymol_file_path}{pml_file_name}.pml", "w")

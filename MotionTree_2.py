@@ -7,6 +7,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform, cdist
 import matplotlib.pyplot as plt
 import timeit
+from FileMngr import write_clustering
 
 
 class MotionTree2:
@@ -116,8 +117,6 @@ class MotionTree2:
             if cluster_pair is None:
                 print("No cluster pair found")
                 return -1
-            # if n > 230:
-            #     print(cluster_pair)
             # print("Checking spatial proximity")
             # When cluster pair is found, check if at least one Ca atom pair between the cluster pair meets the spatial
             # proximity measure.
@@ -132,6 +131,7 @@ class MotionTree2:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
             # print(n, cluster_pair)
+            write_clustering("motion_tree_2", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
             # Add cluster 1 points to cluster 0.
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
@@ -160,9 +160,6 @@ class MotionTree2:
             # https://stackoverflow.com/questions/7761393/how-to-modify-a-2d-numpy-array-at-specific-locations-without-a-loop
             # diff_dist_copy[[3, 7, 5, 10], [5, 10, 3, 7]]
             diff_dist_copy[rows, cols] = np.inf
-        # if n == 78:
-        #     write_clustering("1oj7_2", f"Visited {visited_clusters}", append=True)
-            # write_clustering("1oj7_2", f"The copy {diff_dist_copy[203, 286]}", append=True)
         # print(np.unravel_index(np.argmin(diff_dist_copy, axis=None), diff_dist_copy.shape))
         # Get the index of the cluster pair with the smallest value.
         # np.argmin gets the index of the minimum value. axis=None means that the array is flattened.
@@ -170,7 +167,7 @@ class MotionTree2:
         # https://stackoverflow.com/questions/48135736/what-is-an-intuitive-explanation-of-np-unravel-index
         cluster_pair = np.unravel_index(np.argmin(diff_dist_copy, axis=None), diff_dist_copy.shape)
 
-        return list(cluster_pair), np.min(diff_dist_copy, axis=None)
+        return list(cluster_pair), np.min(diff_dist_copy)
 
     def spatial_proximity_measure(self, cluster_pair):
         """

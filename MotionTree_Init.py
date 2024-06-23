@@ -7,6 +7,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform, cdist
 import matplotlib.pyplot as plt
 import timeit
+from FileMngr import write_clustering
 
 
 class MotionTreeInit:
@@ -87,26 +88,28 @@ class MotionTreeInit:
         cluster_found = False
         while not cluster_found:
             # print("Finding the closest clusters")
-            cluster_pair, min_dist = self.get_closest_clusters(dist_diff_mat, visited_clusters, n)
+            cluster_pair, min_dist = self.get_closest_clusters(dist_diff_mat, visited_clusters)
             if cluster_pair is None:
                 print("No cluster pair found")
                 return -1
             # if n > 230:
             #     print(cluster_pair)
             # print("Checking spatial proximity")
-            spatial_met, clust_1, clust_2, min_dist_1, min_dist_2 = self.spatial_proximity_measure(cluster_pair)
+            spatial_met = self.spatial_proximity_measure(cluster_pair)
             if not spatial_met:
                 # print("Spatial proximity not met")
                 visited_clusters.append(cluster_pair)
                 continue
             # print(n, cluster_pair)
+            # print(n, self.clusters[cluster_pair[0]], self.clusters[cluster_pair[1]])
+            write_clustering("motion_tree_init", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
             new_dist_diff_mat = self.update_distance_matrix(dist_diff_mat, cluster_pair)
             del self.clusters[cluster_pair[1]]
             return new_dist_diff_mat
 
-    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters, n):
+    def get_closest_clusters(self, diff_dist_matrix: np.array, visited_clusters):
         """
         Using the difference distance matrix, find the closest clusters. If the cluster pair has already been checked,
         ignore it and find another one.
@@ -168,10 +171,11 @@ class MotionTreeInit:
 
         return dist_diffs
 
-    def print_dist_diff_mat(self, dist_mat):
-        for i in range(dist_mat.shape[0]):
-            row = []
-            for j in range(dist_mat.shape[1]):
-                row.append(dist_mat[i, j])
-            print(row)
+
+def print_dist_diff_mat(self, dist_mat):
+    for i in range(dist_mat.shape[0]):
+        row = []
+        for j in range(dist_mat.shape[1]):
+            row.append(dist_mat[i, j])
+        print(row)
 

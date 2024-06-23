@@ -4,10 +4,11 @@ from PySide6.QtWidgets import QMainWindow, QToolBar, QPushButton, QStatusBar, QM
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app):
+    def __init__(self, app, widget):
         super().__init__()
         self.app = app  # Declare an app member
         self.setWindowTitle("Motion Tree Builder")
+        self.setCentralWidget(widget)
 
         # Menubar and menus
         menu_bar = self.menuBar()
@@ -79,16 +80,3 @@ class MainWindow(QMainWindow):
         self.app.quit()
 
 
-class MainWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        # Buttons
-        button = QPushButton("Click")
-        button.clicked.connect(self.button_clicked)
-        layout = QVBoxLayout()
-        layout.addWidget(button)
-        self.setLayout(layout)
-
-    def button_clicked(self):
-        print("Done")
