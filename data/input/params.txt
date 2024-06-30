@@ -2,7 +2,7 @@
 atoms=ca
 #
 # The inter-residue contact information
-threshold=7
+threshold=14
 #
 # The default linkage to use for the agglomerative clustering.
 linkage=complete
@@ -10,5 +10,5 @@ linkage=complete
 # The number of the largest distance differences to average.
 avg_diff=20
 #
-# The metric for calculating distances
-dist_metric=euclidean
+# Minimum Magnitude for domain cutoff
+magnitude=5

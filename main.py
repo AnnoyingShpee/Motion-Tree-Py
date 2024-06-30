@@ -27,7 +27,6 @@ def main():
     engine.run()
     # cluster_3, link_mat = engine.run()
 
-
     # for i in range(len(cluster_1[0])):
     #     print(i, cluster_1[0][i], cluster_2[0][i])
 

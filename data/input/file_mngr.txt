@@ -1,8 +1,8 @@
 # The path for storing the pdb files
-input_path=data/input/pdb/
+input_path=data/input/pdb
 #
 # The path for storing the program's output
-output_path=data/output/pdb/
+output_path=data/output
 #
 # Name for first chain
 protein1=1oj7

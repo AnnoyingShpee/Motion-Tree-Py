@@ -1,12 +1,9 @@
-import sys
 from statistics import mean
 import numpy as np
 from Protein import Protein
-import scipy.cluster.hierarchy as sch
-from scipy.spatial.distance import squareform, cdist
-import matplotlib.pyplot as plt
+from scipy.spatial.distance import cdist
 import timeit
-from FileMngr import write_clustering
+from FileMngr import save_results
 
 
 class MotionTreeTest:
@@ -25,13 +22,13 @@ class MotionTreeTest:
         # Initialise proteins
         self.protein_1: Protein = Protein(
             name=self.files['protein1'],
-            file_path=f"{self.files['input_path']}{self.files['protein1']}.pdb",
+            file_path=f"{self.files['input_path']}/{self.files['protein1']}.pdb",
             chain=self.files["chain1id"],
             atom_type=self.parameters["atoms"]
         )
         self.protein_2: Protein = Protein(
             name=self.files['protein2'],
-            file_path=f"{self.files['input_path']}{self.files['protein2']}.pdb",
+            file_path=f"{self.files['input_path']}/{self.files['protein2']}.pdb",
             chain=self.files["chain2id"],
             atom_type=self.parameters["atoms"]
         )
@@ -65,37 +62,14 @@ class MotionTreeTest:
             n += 1
 
         end = timeit.default_timer()
-        # # print(self.clusters)
-        # # print(np.unique(self.clusters[0], return_counts=True))
-        print("Time:", end - start)
         # print(self.clusters)
-        # for i in range(self.link_mat.shape[0]):
-        #     write_clustering("motion_tree_link_mat", f"{self.link_mat[i][0]} {self.link_mat[i][1]} {self.link_mat[i][2]} {self.link_mat[i][3]}", i)
-        # return self.clusters, self.link_mat
-
-        # print("Initial")
-        # self.print_dist_diff_mat(self.dist_diff_mat_init)
-
-        # print("Final")
-        # self.print_dist_diff_mat(dist_diff_mat)
-        # condensed_dist_diff_mat = squareform(dist_diff_mat, force="tovector", checks=False)
-        # link_mat = sch.linkage(condensed_dist_diff_mat, method="average")
-        # print(self.link_mat)
-        sch.dendrogram(self.link_mat)
-        plt.show()
-        # print(condensed_dist_diff)
-        # print(condensed_dist_diff.shape)
-
-        # sch.dendrogram(self.link_mat)
-        # plt.show()
-        # plt.matshow(self.dist_diff_mat_init)
-        # plt.savefig("Init.png")
-        # plt.matshow(dist_diff_mat)
-        # plt.show()
-        # plt.savefig("Final.png")
-        # plt.savefig(f"data/output/dendrograms/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_dendro.png")
-        # plt.matshow(dist_diff_mat)
-        # plt.savefig(f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
+        print("Time:", end - start)
+        save_results(
+            self.files["output_path"],
+            f"{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}",
+            self.link_mat,
+            "dendrogram"
+        )
 
     def create_difference_distance_matrix(self):
         """
@@ -104,9 +78,12 @@ class MotionTreeTest:
         """
         self.dist_diff_mat_init = np.absolute(self.protein_1.distance_matrix - self.protein_2.distance_matrix)
         # Save the difference distance matrix before setting the diagonals to infinity for a cleaner visual.
-        # plt.matshow(self.dist_diff_mat_init)
-        # plt.savefig(
-        #     f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
+        save_results(
+            self.files["output_path"],
+            f"{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}",
+            self.dist_diff_mat_init,
+            "diff_dist_mat"
+        )
         np.fill_diagonal(self.dist_diff_mat_init, np.inf)
 
     def hierarchical_clustering(self, dist_diff_mat, n):
@@ -141,7 +118,7 @@ class MotionTreeTest:
             # print(n, cluster_pair)
             new_cluster_id = n + self.num_residues
             # print(n, self.clusters[cluster_pair[0]], self.clusters[cluster_pair[1]])
-            write_clustering("motion_tree_test", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
+            # write_clustering("motion_tree_test", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
             self.clusters[new_cluster_id] = self.clusters[cluster_pair[0]]
             self.clusters[new_cluster_id].extend(self.clusters[cluster_pair[1]])
             # print(cluster_pair[0], cluster_pair[1], min_dist, len(self.clusters[new_cluster_id]))
@@ -236,9 +213,6 @@ class MotionTreeTest:
                 else:
                     new_distance_matrix[new_id, k] = mean(dists)
                 new_distance_matrix[k, new_id] = new_distance_matrix[new_id, k]
-        #
-        # if cluster_pair[0] == 287:
-        #     print(new_distance_matrix[cluster_pair[0], :])
 
         return new_distance_matrix
 

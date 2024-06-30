@@ -66,29 +66,6 @@ class MotionTree2:
         # print(np.unique(self.clusters[0], return_counts=True))
         print("Time:", end - start)
         return self.clusters
-        # self.plot_clusters(self.protein_1.main_atoms_coords, self.clusters)
-
-        # print("Initial")
-        # self.print_dist_diff_mat(self.dist_diff_mat_init)
-
-        # print("Final")
-        # self.print_dist_diff_mat(dist_diff_mat)
-
-        # condensed_dist_diff = squareform(1-dist_diff_mat, force="tovector", checks=False)
-        # print(condensed_dist_diff)
-        # print(condensed_dist_diff.shape)
-
-        # sch.dendrogram(sch.linkage(squareform(dist_diff_mat, force="tovector", checks=False)))
-        # sch.dendrogram(linkage_mat)
-        # plt.show()
-        # plt.matshow(self.dist_diff_mat_init)
-        # plt.savefig("Init.png")
-        # plt.matshow(dist_diff_mat)
-        # plt.show()
-        # plt.savefig("Final.png")
-        # plt.savefig(f"data/output/dendrograms/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_dendro.png")
-        # plt.matshow(dist_diff_mat)
-        # plt.savefig(f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
 
     def create_difference_distance_matrix(self):
         """

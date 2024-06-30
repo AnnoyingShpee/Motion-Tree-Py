@@ -1,6 +1,8 @@
-import sys
+import json
 from pathlib import Path
 import urllib.request
+import matplotlib.pyplot as plt
+import scipy.cluster.hierarchy as sch
 
 
 def read_file_paths():
@@ -22,8 +24,8 @@ def read_file_paths():
 
     temp_dict["protein1"] = temp_dict["protein1"].lower()
     temp_dict["protein2"] = temp_dict["protein2"].lower()
-    file_1 = temp_dict["input_path"] + temp_dict["protein1"] + ".pdb"
-    file_2 = temp_dict["input_path"] + temp_dict["protein2"] + ".pdb"
+    file_1 = temp_dict["input_path"] + "/" + temp_dict["protein1"] + ".pdb"
+    file_2 = temp_dict["input_path"] + "/" + temp_dict["protein2"] + ".pdb"
 
     path = Path(file_1)
     if not path.exists():
@@ -34,7 +36,6 @@ def read_file_paths():
             )
         except Exception as e:
             print(e)
-            sys.exit()
 
     path = Path(file_2)
     if not path.exists():
@@ -45,7 +46,6 @@ def read_file_paths():
             )
         except Exception as e:
             print(e)
-            sys.exit()
 
     return temp_dict
 
@@ -70,6 +70,29 @@ def read_param_file():
         print(e)
         return None
     return temp_dict
+
+
+def save_results(output_path: str, proteins: str, data, image_type):
+    dir_name = f"{output_path}/{proteins}"
+    path = Path(dir_name)
+    if not path.is_dir():
+        path.mkdir(parents=True)
+    if image_type == "diff_dist_mat":
+        fig_1, axis_1 = plt.subplots()
+        axis_1.set_title(f"{proteins} Distance Difference Matrix")
+        axis_1.set_xlabel("Residue Number")
+        axis_1.set_ylabel("Residue Number")
+        axis_1.matshow(data)
+        plt.savefig(f"{dir_name}/{proteins}_mat.png")
+    elif image_type == "dendrogram":
+        fig_1, axis_1 = plt.subplots()
+        axis_1.set_title(f"{proteins} Motion Tree")
+        axis_1.set_xlabel("Residue Number")
+        axis_1.set_ylabel("Magnitude (Å)")
+        sch.dendrogram(data)
+        plt.savefig(f"{dir_name}/{proteins}_tree.png")
+
+    plt.close()
 
 
 def write_clustering(file_name: str, data, n=0):

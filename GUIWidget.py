@@ -1,7 +1,5 @@
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMainWindow, QToolBar, QPushButton, QStatusBar, QMessageBox, QVBoxLayout, QHBoxLayout, \
-    QWidget, QLabel, QLineEdit, QFileDialog
+    QWidget, QLabel, QLineEdit, QFileDialog, QGridLayout
 
 
 class MainWidget(QWidget):
@@ -57,4 +55,11 @@ class MainWidget(QWidget):
             print("Ok clicked")
         elif issue == QMessageBox.Cancel:
             print("Cancel clicked")
+
+    def add_widget_with_label(self, layout, widget, label_text):
+        hbox = QHBoxLayout()
+        label = QLabel(label_text)
+        hbox.addWidget(label)
+        hbox.addWidget(widget)
+        layout.addLayout(hbox)
 
