@@ -1,0 +1,30 @@
+Protein 1 = 4ake (A)
+Protein 2 = 2eck (B)
+Effective Node = 1
+Magnitude = 23.63
+Large Domain: 214 Residues
+Residues: 0   - 213
+Small Domain: 100 Residues
+Residues: 114 - 213
+==============================================================
+Effective Node = 2
+Magnitude = 16.84
+Large Domain: 56  Residues
+Residues: 158 - 213
+Small Domain: 100 Residues
+Residues: 114 - 213
+==============================================================
+Effective Node = 3
+Magnitude = 14.37
+Large Domain: 61  Residues
+Residues: 0   - 60 
+Small Domain: 214 Residues
+Residues: 0   - 213
+==============================================================
+Effective Node = 4
+Magnitude = 12.04
+Large Domain: 32  Residues
+Residues: 29  - 60 
+Small Domain: 61  Residues
+Residues: 0   - 60 
+==============================================================

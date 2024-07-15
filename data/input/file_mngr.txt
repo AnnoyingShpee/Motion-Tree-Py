@@ -5,13 +5,13 @@ input_path=data/input/pdb
 output_path=data/output
 #
 # Name for first chain
-protein1=1oj7
+protein1=4ake
 #
 # One-letter code for 1st chain ID if it exists, otherwise leave blank
 chain1id=A
 #
 # Write name for 2nd chain, may be the same as first
-protein2=1oj7
+protein2=2eck
 #
 # One-letter code for 2nd chain ID
-chain2id=C
+chain2id=A

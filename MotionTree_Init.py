@@ -7,7 +7,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform, cdist
 import matplotlib.pyplot as plt
 import timeit
-from FileMngr import write_clustering
+from FileMngr import write_bending_residues_to_file
 
 
 class MotionTreeInit:
@@ -102,7 +102,7 @@ class MotionTreeInit:
                 continue
             # print(n, cluster_pair)
             # print(n, self.clusters[cluster_pair[0]], self.clusters[cluster_pair[1]])
-            write_clustering("motion_tree_init", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
+            # write_clustering("motion_tree_init", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
             new_dist_diff_mat = self.update_distance_matrix(dist_diff_mat, cluster_pair)

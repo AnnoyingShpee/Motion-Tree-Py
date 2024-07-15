@@ -1,5 +1,6 @@
+import sys
 import FileMngr
-from MotionTree import MotionTreeTest
+from MotionTree import MotionTree
 from MotionTree_2 import MotionTree2
 from MotionTree_Init import MotionTreeInit
 from difflib import SequenceMatcher
@@ -11,7 +12,6 @@ def main():
     files_dict = FileMngr.read_file_paths()
     # Read parameter file to get parameters ( Protein PDB file names, protein chains, window size, domain size, ratio )
     param_dict = FileMngr.read_param_file()
-    # 10j7 = 390
     # Initialise MotionTree object
     # print("Motion Tree Init")
     # engine = MotionTreeInit(files_dict, param_dict)
@@ -22,8 +22,11 @@ def main():
     # cluster_2 = engine.run()
     # print("===============================================================================")
     print("Motion Tree Test")
-    engine = MotionTreeTest(files_dict, param_dict)
-    print(engine.protein_1.main_atoms_coords.shape)
+    engine = MotionTree(files_dict, param_dict)
+    engine.init_protein(1)
+    engine.init_protein(2)
+    engine.check_sequence_identity()
+    engine.create_distance_difference_matrix()
     engine.run()
     # cluster_3, link_mat = engine.run()
 

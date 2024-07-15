@@ -7,7 +7,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform, cdist
 import matplotlib.pyplot as plt
 import timeit
-from FileMngr import write_clustering
+from FileMngr import write_bending_residues_to_file
 
 
 class MotionTree2:
@@ -108,7 +108,7 @@ class MotionTree2:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
             # print(n, cluster_pair)
-            write_clustering("motion_tree_2", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
+            # write_bending_residues_to_file("motion_tree_2", f"{n} {cluster_pair} {min_dist} {self.clusters[cluster_pair[0]]} {self.clusters[cluster_pair[1]]}", n)
             # Add cluster 1 points to cluster 0.
             self.clusters[cluster_pair[0]].extend(self.clusters[cluster_pair[1]])
             # print("Update distance matrix")
@@ -154,10 +154,10 @@ class MotionTree2:
         cluster_1_indices_list = self.clusters[cluster_pair[0]]
         cluster_2_indices_list = self.clusters[cluster_pair[1]]
 
-        protein_1_cluster_1_coords = self.protein_1.main_atoms_coords[cluster_1_indices_list]
-        protein_1_cluster_2_coords = self.protein_1.main_atoms_coords[cluster_2_indices_list]
-        protein_2_cluster_1_coords = self.protein_2.main_atoms_coords[cluster_1_indices_list]
-        protein_2_cluster_2_coords = self.protein_2.main_atoms_coords[cluster_2_indices_list]
+        protein_1_cluster_1_coords = self.protein_1.utilised_atoms_coords[cluster_1_indices_list]
+        protein_1_cluster_2_coords = self.protein_1.utilised_atoms_coords[cluster_2_indices_list]
+        protein_2_cluster_1_coords = self.protein_2.utilised_atoms_coords[cluster_1_indices_list]
+        protein_2_cluster_2_coords = self.protein_2.utilised_atoms_coords[cluster_2_indices_list]
 
         protein_1_distances = cdist(protein_1_cluster_1_coords, protein_1_cluster_2_coords)
         protein_2_distances = cdist(protein_2_cluster_1_coords, protein_2_cluster_2_coords)
