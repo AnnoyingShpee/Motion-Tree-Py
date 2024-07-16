@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QPushButton, QStatusBar, QFileDialog, QMessageBox, \
     QGridLayout, QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QGridLayout, QLabel, QLineEdit, QSlider
 from MotionTree import MotionTree
-from FileMngr import get_files, check_for_existing_motion_tree
+from DataMngr import get_files, check_for_existing_motion_tree
 
 
 user32 = ctypes.windll.user32
@@ -115,12 +115,11 @@ class MainWindow(QMainWindow):
         # Menubar and menus
         menu_bar = self.menuBar()
         # & sets the first letter as the ALT shortcut (ALT + f)
-        file_menu = menu_bar.addMenu("&File")
-        quit_action = file_menu.addAction("Quit")
-        quit_action.triggered.connect(self.quit_app)
-
-        settings_menu = menu_bar.addMenu("&Settings")
+        builder_menu = menu_bar.addMenu("&Builder")
+        settings_menu = menu_bar.addMenu("&Database")
         help_menu = menu_bar.addMenu("&Help")
+        quit_menu = menu_bar.addMenu("Quit")
+        quit_menu.triggered.connect(self.quit_app)
 
         # # The toolbar
         # tool_bar = QToolBar("Main Toolbar")
@@ -452,17 +451,17 @@ class ParametersForm(QWidget):
                 "default": 7.0,
                 "interval": 0.5
             },
-            "magnitude": {
-                "minimum": 5,
-                "maximum": 10,
-                "default": 5,
-                "interval": 1
-            },
             "dissimilarity": {
                 "minimum": 10,
                 "maximum": 50,
                 "default": 20,
                 "interval": 5
+            },
+            "magnitude": {
+                "minimum": 5,
+                "maximum": 10,
+                "default": 5,
+                "interval": 1
             }
         }
 
@@ -473,17 +472,17 @@ class ParametersForm(QWidget):
             "spatial_proximity_max_label": QLabel(str(self._widgets_info["spatial_proximity"]["maximum"])),
             "spatial_proximity_value": QLabel(str(self._widgets_info["spatial_proximity"]["default"])),
 
-            "magnitude_label": QLabel("The minimum magnitude for an effective node: "),
-            "magnitude_min_label": QLabel(str(self._widgets_info["magnitude"]["minimum"])),
-            "magnitude": DoubleSlider(Qt.Orientation.Horizontal),
-            "magnitude_max_label": QLabel(str(self._widgets_info["magnitude"]["maximum"])),
-            "magnitude_value": QLabel(str(self._widgets_info["magnitude"]["default"])),
-
             "dissimilarity_label": QLabel("The number of residues to average when cluster is large enough: "),
             "dissimilarity_min_label": QLabel(str(self._widgets_info["dissimilarity"]["minimum"])),
             "dissimilarity": DoubleSlider(Qt.Orientation.Horizontal),
             "dissimilarity_max_label": QLabel(str(self._widgets_info["dissimilarity"]["maximum"])),
             "dissimilarity_value": QLabel(str(self._widgets_info["dissimilarity"]["default"])),
+
+            "magnitude_label": QLabel("The minimum magnitude for an effective node: "),
+            "magnitude_min_label": QLabel(str(self._widgets_info["magnitude"]["minimum"])),
+            "magnitude": DoubleSlider(Qt.Orientation.Horizontal),
+            "magnitude_max_label": QLabel(str(self._widgets_info["magnitude"]["maximum"])),
+            "magnitude_value": QLabel(str(self._widgets_info["magnitude"]["default"])),
 
             "build_button": QPushButton("Build Motion Tree")
         }
@@ -514,32 +513,6 @@ class ParametersForm(QWidget):
         self._spatial_proximity_slider_widget = QWidget()
         self._spatial_proximity_slider_widget.setLayout(self._spatial_proximity_slider_layout)
 
-        self.widgets["magnitude"].setMinimum(
-            self._widgets_info["magnitude"]["minimum"]
-        )
-        self.widgets["magnitude"].setMaximum(
-            self._widgets_info["magnitude"]["maximum"]
-        )
-        self.widgets["magnitude"].setInterval(
-            self._widgets_info["magnitude"]["interval"]
-        )
-        self.widgets["magnitude"].setValue(
-            self._widgets_info["magnitude"]["default"]
-        )
-
-        self._magnitude_label_layout = QHBoxLayout()
-        self._magnitude_label_layout.addWidget(self.widgets["magnitude_label"])
-        self._magnitude_label_layout.addWidget(self.widgets["magnitude_value"])
-        self._magnitude_label_widget = QWidget()
-        self._magnitude_label_widget.setLayout(self._magnitude_label_layout)
-
-        self._magnitude_slider_layout = QHBoxLayout()
-        self._magnitude_slider_layout.addWidget(self.widgets["magnitude_min_label"])
-        self._magnitude_slider_layout.addWidget(self.widgets["magnitude"])
-        self._magnitude_slider_layout.addWidget(self.widgets["magnitude_max_label"])
-        self._magnitude_slider_widget = QWidget()
-        self._magnitude_slider_widget.setLayout(self._magnitude_slider_layout)
-
         self.widgets["dissimilarity"].setMinimum(
             self._widgets_info["dissimilarity"]["minimum"]
         )
@@ -566,12 +539,38 @@ class ParametersForm(QWidget):
         self._dissimilarity_slider_widget = QWidget()
         self._dissimilarity_slider_widget.setLayout(self._dissimilarity_slider_layout)
 
+        self.widgets["magnitude"].setMinimum(
+            self._widgets_info["magnitude"]["minimum"]
+        )
+        self.widgets["magnitude"].setMaximum(
+            self._widgets_info["magnitude"]["maximum"]
+        )
+        self.widgets["magnitude"].setInterval(
+            self._widgets_info["magnitude"]["interval"]
+        )
+        self.widgets["magnitude"].setValue(
+            self._widgets_info["magnitude"]["default"]
+        )
+
+        self._magnitude_label_layout = QHBoxLayout()
+        self._magnitude_label_layout.addWidget(self.widgets["magnitude_label"])
+        self._magnitude_label_layout.addWidget(self.widgets["magnitude_value"])
+        self._magnitude_label_widget = QWidget()
+        self._magnitude_label_widget.setLayout(self._magnitude_label_layout)
+
+        self._magnitude_slider_layout = QHBoxLayout()
+        self._magnitude_slider_layout.addWidget(self.widgets["magnitude_min_label"])
+        self._magnitude_slider_layout.addWidget(self.widgets["magnitude"])
+        self._magnitude_slider_layout.addWidget(self.widgets["magnitude_max_label"])
+        self._magnitude_slider_widget = QWidget()
+        self._magnitude_slider_widget.setLayout(self._magnitude_slider_layout)
+
         self.layout.addWidget(self._spatial_proximity_label_widget)
         self.layout.addWidget(self._spatial_proximity_slider_widget)
-        self.layout.addWidget(self._magnitude_label_widget)
-        self.layout.addWidget(self._magnitude_slider_widget)
         self.layout.addWidget(self._dissimilarity_label_widget)
         self.layout.addWidget(self._dissimilarity_slider_widget)
+        self.layout.addWidget(self._magnitude_label_widget)
+        self.layout.addWidget(self._magnitude_slider_widget)
         self.layout.addWidget(self.widgets["build_button"])
 
 

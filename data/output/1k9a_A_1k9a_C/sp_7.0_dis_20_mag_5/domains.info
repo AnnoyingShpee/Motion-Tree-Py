@@ -1,0 +1,68 @@
+Protein 1 = 1k9a (A)
+Protein 2 = 1k9a (C)
+Number of Effective Nodes = 4
+
+==========================================================================
+Effective Node 1
+Magnitude = 22.51
+--------------------------------------------------------------------------
+1k9a (A)
+Large Domain: 343 Residues
+Residues: 6   - 79  , 175 - 340 , 348 - 450
+Small Domain: 95  Residues
+Residues: 80  - 174
+
+1k9a (C)
+Large Domain: 343 Residues
+Residues: 6   - 79  , 175 - 340 , 348 - 450
+Small Domain: 95  Residues
+Residues: 80  - 174
+
+==========================================================================
+Effective Node 2
+Magnitude = 17.58
+--------------------------------------------------------------------------
+1k9a (A)
+Large Domain: 179 Residues
+Residues: 242 - 250 , 272 - 322 , 325 - 340 , 348 - 450
+Small Domain: 164 Residues
+Residues: 6   - 79  , 175 - 241 , 251 - 271 , 323 - 324
+
+1k9a (C)
+Large Domain: 179 Residues
+Residues: 242 - 250 , 272 - 322 , 325 - 340 , 348 - 450
+Small Domain: 164 Residues
+Residues: 6   - 79  , 175 - 241 , 251 - 271 , 323 - 324
+
+==========================================================================
+Effective Node 3
+Magnitude = 9.26
+--------------------------------------------------------------------------
+1k9a (A)
+Large Domain: 157 Residues
+Residues: 6   - 79  , 175 - 200 , 208 - 241 , 251 - 271 , 323 - 324
+Small Domain: 7   Residues
+Residues: 201 - 207
+
+1k9a (C)
+Large Domain: 157 Residues
+Residues: 6   - 79  , 175 - 200 , 208 - 241 , 251 - 271 , 323 - 324
+Small Domain: 7   Residues
+Residues: 201 - 207
+
+==========================================================================
+Effective Node 4
+Magnitude = 7.92
+--------------------------------------------------------------------------
+1k9a (A)
+Large Domain: 99  Residues
+Residues: 6   - 79  , 175 - 186 , 229 - 241
+Small Domain: 58  Residues
+Residues: 187 - 200 , 208 - 228 , 251 - 271 , 323 - 324
+
+1k9a (C)
+Large Domain: 99  Residues
+Residues: 6   - 79  , 175 - 186 , 229 - 241
+Small Domain: 58  Residues
+Residues: 187 - 200 , 208 - 228 , 251 - 271 , 323 - 324
+

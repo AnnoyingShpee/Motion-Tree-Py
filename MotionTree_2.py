@@ -7,7 +7,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import squareform, cdist
 import matplotlib.pyplot as plt
 import timeit
-from FileMngr import write_bending_residues_to_file
+from DataMngr import write_info_file
 
 
 class MotionTree2:

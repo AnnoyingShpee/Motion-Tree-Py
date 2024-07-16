@@ -1,10 +1,11 @@
-import timeit
 import numpy as np
+from copy import deepcopy
+from timeit import default_timer
 from difflib import SequenceMatcher
 from statistics import mean
 from Protein import Protein
+from DataMngr import save_results, write_info_file
 from scipy.spatial.distance import cdist
-from FileMngr import save_results, write_bending_residues_to_file
 
 
 class MotionTree:
@@ -34,8 +35,6 @@ class MotionTree:
         # self.link_mat = np.empty((self.diff_dist_mat_init.shape[0] - 1, 4))
         self.link_mat = None
         self.nodes = {}
-        # Bending residues indices
-        self.bending_residues = set()
 
     def init_protein(self, protein_num):
         print("Init Protein", protein_num)
@@ -74,14 +73,16 @@ class MotionTree:
         if similarity < 0.4:
             raise ValueError("Sequence Identity less than 40%")
 
-        coords_1, coords_2, utilised_res_1, utilised_res_2 = self.get_ca_atoms_coords()
-        self.num_residues = len(utilised_res_1)
+        coords_1, coords_2, utilised_res_ind_1, utilised_res_ind_2 = self.get_ca_atoms_coords()
+        self.num_residues = len(utilised_res_ind_1)
         self.protein_1.utilised_atoms_coords = np.asarray(coords_1)
-        self.protein_1.utilised_res_nums = utilised_res_1
+        self.protein_1.utilised_res_indices = np.asarray(utilised_res_ind_1)
         self.protein_2.utilised_atoms_coords = np.asarray(coords_2)
-        self.protein_2.utilised_res_nums = utilised_res_2
+        self.protein_2.utilised_res_indices = np.asarray(utilised_res_ind_2)
         self.protein_1.get_distance_matrix()
         self.protein_2.get_distance_matrix()
+        self.protein_1.print_dist_mat()
+        self.protein_2.print_dist_mat()
 
     def get_ca_atoms_coords(self):
         """
@@ -171,11 +172,12 @@ class MotionTree:
         return "Distance Difference Matrix created"
 
     def run(self):
-        start = timeit.default_timer()
+        start = default_timer()
         diff_dist_mat = np.copy(self.diff_dist_mat_init)
         n = 0
         while len(self.clusters) > 1:
             # print(self.clusters)
+            # print(len(self.clusters), self.clusters)
             diff_dist_mat = self.hierarchical_clustering(diff_dist_mat, n)
             if type(diff_dist_mat) == int:
                 print("No cluster pair found")
@@ -185,7 +187,7 @@ class MotionTree:
                 break
             n += 1
 
-        end = timeit.default_timer()
+        end = default_timer()
         total_time = end - start
         # print(self.clusters)
         print("Time:", total_time)
@@ -195,7 +197,7 @@ class MotionTree:
             self.link_mat,
             "dendrogram"
         )
-        write_bending_residues_to_file(self.files, self.parameters, self.nodes)
+        write_info_file(self.files, self.parameters, self.nodes, self.protein_1, self.protein_2)
         return "Motion Tree built", total_time
 
     def hierarchical_clustering(self, diff_dist_mat, n):
@@ -228,25 +230,26 @@ class MotionTree:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
             if min_dist >= self.parameters["magnitude"]:
-                print("Cluster pair distance", cluster_pair, min_dist)
-                print("Cluster pair 0", self.clusters[cluster_pair[0]])
-                print("Cluster pair 1", self.clusters[cluster_pair[1]])
                 self.clusters[cluster_pair[0]].sort()
                 self.clusters[cluster_pair[1]].sort()
                 cluster_0_size = len(self.clusters[cluster_pair[0]])
                 cluster_1_size = len(self.clusters[cluster_pair[1]])
+                print("Cluster pair distance", cluster_pair, min_dist)
+                print("Cluster pair 0", self.clusters[cluster_pair[0]])
+                print("Cluster pair 1", self.clusters[cluster_pair[1]])
                 if cluster_0_size > cluster_1_size:
                     self.nodes[len(self.nodes)] = {
                         "magnitude": min_dist,
-                        "large_cluster": self.clusters[cluster_pair[0]],
-                        "small_cluster": self.clusters[cluster_pair[1]]
+                        "large_domain": deepcopy(self.clusters[cluster_pair[0]]),
+                        "small_domain": deepcopy(self.clusters[cluster_pair[1]])
                     }
                 else:
                     self.nodes[len(self.nodes)] = {
                         "magnitude": min_dist,
-                        "large_cluster": self.clusters[cluster_pair[1]],
-                        "small_cluster": self.clusters[cluster_pair[0]]
+                        "large_domain": deepcopy(self.clusters[cluster_pair[1]]),
+                        "small_domain": deepcopy(self.clusters[cluster_pair[0]])
                     }
+                self.print_node()
             # print(n, cluster_pair)
             new_cluster_id = n + self.num_residues
             # print(n, self.clusters[cluster_pair[0]], self.clusters[cluster_pair[1]])
@@ -288,8 +291,6 @@ class MotionTree:
         # https://stackoverflow.com/questions/48135736/what-is-an-intuitive-explanation-of-np-unravel-index
         cluster_pair = np.unravel_index(np.argmin(diff_dist_copy, axis=None), diff_dist_copy.shape)
 
-        # print(cluster_pair, np.min(diff_dist_copy))
-
         return list(cluster_pair), np.min(diff_dist_copy)
 
     def spatial_proximity_measure(self, cluster_pair):
@@ -297,6 +298,7 @@ class MotionTree:
         From the 2 most similar clusters, checks if the closest Ca atom pair meets the spatial proximity
         :return:
         """
+        # print(cluster_pair)
         cluster_1_indices_list = self.clusters[cluster_pair[0]]
         cluster_2_indices_list = self.clusters[cluster_pair[1]]
 
@@ -308,7 +310,8 @@ class MotionTree:
         protein_1_distances = cdist(protein_1_cluster_1_coords, protein_1_cluster_2_coords)
         protein_2_distances = cdist(protein_2_cluster_1_coords, protein_2_cluster_2_coords)
 
-        return np.min(protein_1_distances) < self.parameters["spatial_proximity"] and np.min(protein_2_distances) < self.parameters["spatial_proximity"]
+        return np.min(protein_1_distances) < self.parameters["spatial_proximity"] and \
+               np.min(protein_2_distances) < self.parameters["spatial_proximity"]
 
     def update_distance_matrix(self, diff_dist_mat, cluster_pair, new_id):
         """
@@ -335,7 +338,7 @@ class MotionTree:
                 # print(self.clusters.keys())
                 # print(cluster_pair)
                 # print(k, new_id)
-                dists = self.get_diff_disterences(self.clusters[k], self.clusters[new_id])
+                dists = self.get_diff_distances(self.clusters[k], self.clusters[new_id])
                 # dists = []
                 # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[0]]))
                 # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[1]]))
@@ -348,7 +351,7 @@ class MotionTree:
 
         return new_distance_matrix
 
-    def get_diff_disterences(self, cluster_indices_1, cluster_indices_2):
+    def get_diff_distances(self, cluster_indices_1, cluster_indices_2):
         """
         Get the distance differences
         :param cluster_indices_1:
@@ -361,6 +364,13 @@ class MotionTree:
                 diff_dists.append(self.diff_dist_mat_init[i, j])
 
         return diff_dists
+
+    def print_node(self):
+        for key, values in self.nodes.items():
+            print(key, "{")
+            print("large_domain:", values["large_domain"])
+            print("small_domain:", values["small_domain"])
+            print("}")
 
 
 def print_diff_dist_mat(dist_mat):

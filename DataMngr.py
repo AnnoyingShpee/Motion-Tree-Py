@@ -6,6 +6,7 @@ from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
 from scipy.cluster.hierarchy import dendrogram
+import psycopg2
 
 
 def read_file_paths():
@@ -203,51 +204,129 @@ def check_for_existing_motion_tree(files, params):
         return None, None, None
 
 
-def write_bending_residues_to_file(files: dict, params: dict, nodes):
+def write_domains_to_pdb(files: dict, params: dict, nodes):
     proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
     params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
-    file_path = f"{files['output_path']}/{proteins_folder}/{params_folder}/bend_res.info"
+    file_path = f"{files['output_path']}/{proteins_folder}/{params_folder}/domains.pdb"
+
+    try:
+        fw = open(file_path, "w")
+        num_nodes = len(nodes)
+
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+
+
+def write_info_file(files: dict, params: dict, nodes, protein_1, protein_2):
+    proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
+    params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
+    file_path = f"{files['output_path']}/{proteins_folder}/{params_folder}/domains.info"
 
     try:
         fw = open(file_path, "w")
         num_nodes = len(nodes)
         fw.write(f"Protein 1 = {files['protein1']} ({files['chain1id']})\n")
         fw.write(f"Protein 2 = {files['protein2']} ({files['chain2id']})\n")
+        fw.write(f"Number of Effective Nodes = {num_nodes}\n\n")
         for i in range(num_nodes - 1, -1, -1):
-            fw.write(f"Effective Node = {num_nodes - i}\n")
+            fw.write("==========================================================================\n")
+            fw.write(f"Effective Node {num_nodes - i}\n")
             fw.write(f"Magnitude = {round(nodes[i]['magnitude'], 2)}\n")
-            large_cluster = nodes[i]["large_cluster"]
-            fw.write(f"Large Domain: {str(len(large_cluster)).ljust(3, ' ')} Residues\n")
-            domain_res_str = ""
-            # https://stackoverflow.com/questions/2154249/identify-groups-of-consecutive-numbers-in-a-list
-            for k, g in groupby(enumerate(large_cluster), lambda ix: ix[0] - ix[1]):
-                if len(domain_res_str) > 0:
-                    domain_res_str = domain_res_str + " , "
-                group = list(map(itemgetter(1), g))
-                print(group)
-                print(type(group))
-                if len(group) > 1:
-                    domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ') + " - " + str(group[-1]).ljust(3, ' ')
-                else:
-                    domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ')
+            fw.write("--------------------------------------------------------------------------\n")
+            large_domain = nodes[i]["large_domain"]
+            small_domain = nodes[i]["small_domain"]
+            large_size = len(large_domain)
+            small_size = len(small_domain)
+
+            fw.write(f"{files['protein1']} ({files['chain1id']})\n")
+
+            fw.write(f"Large Domain: {str(large_size).ljust(3, ' ')} Residues\n")
+            large_dom_res = protein_1.get_residue_nums(large_domain)
+            domain_res_str = build_dom_res_str(large_dom_res)
             fw.write(f"Residues: {domain_res_str}\n")
 
-            small_cluster = nodes[i]["small_cluster"]
-            fw.write(f"Small Domain: {str(len(small_cluster)).ljust(3, ' ')} Residues\n")
-            domain_res_str = ""
-            for k, g in groupby(enumerate(small_cluster), lambda ix: ix[0] - ix[1]):
-                if len(domain_res_str) > 0:
-                    domain_res_str = domain_res_str + " , "
-                group = list(map(itemgetter(1), g))
-                print(group)
-                print(type(group))
-                if len(group) > 1:
-                    domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ') + " - " + str(group[-1]).ljust(3, ' ')
-                else:
-                    domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ')
+            fw.write(f"Small Domain: {str(small_size).ljust(3, ' ')} Residues\n")
+            small_dom_res = protein_1.get_residue_nums(small_domain)
+            domain_res_str = build_dom_res_str(small_dom_res)
+            fw.write(f"Residues: {domain_res_str}\n\n")
+
+            fw.write(f"{files['protein2']} ({files['chain2id']})\n")
+
+            fw.write(f"Large Domain: {str(large_size).ljust(3, ' ')} Residues\n")
+            large_dom_res = protein_2.get_residue_nums(large_domain)
+            domain_res_str = build_dom_res_str(large_dom_res)
             fw.write(f"Residues: {domain_res_str}\n")
-            fw.write("==============================================================\n")
+
+            fw.write(f"Small Domain: {str(small_size).ljust(3, ' ')} Residues\n")
+            small_dom_res = protein_2.get_residue_nums(small_domain)
+            domain_res_str = build_dom_res_str(small_dom_res)
+            fw.write(f"Residues: {domain_res_str}\n\n")
         fw.close()
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+
+
+def group_continuous_num(data):
+    # https://stackoverflow.com/questions/2154249/identify-groups-of-consecutive-numbers-in-a-list
+    for k, g in groupby(enumerate(data), lambda ix: ix[0] - ix[1]):
+        yield list(map(itemgetter(1), g))
+
+
+def build_dom_res_str(residue_nums):
+    domain_res_str = ""
+    groups = group_continuous_num(residue_nums)
+
+    for group in groups:
+        if len(domain_res_str) > 0:
+            domain_res_str = domain_res_str + " , "
+        if len(group) > 1:
+            domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ') + " - " + str(group[-1]).ljust(3, ' ')
+        else:
+            domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ')
+
+    return domain_res_str
+
+
+def get_conn():
+    pw_file = open("/data/input/pw.txt", "r")
+    lines = pw_file.readlines()
+    conn_str = None
+    for line in lines:
+        tokens = line.split("=")
+        if conn_str is None:
+            conn_str = f"{tokens[0]}='{tokens[1]}'"
+        else:
+            if tokens[0] == "password":
+                conn_str += f" {tokens[0]}={tokens}"
+            else:
+                conn_str += f" {tokens[0]}='{tokens}'"
+
+    conn = psycopg2.connect(conn_str)
+    return conn
+
+
+def check_db(protein_1, chain_1, protein_2, chain_2, spat_prox, dissimilarity, magnitude):
+    try:
+        conn = get_conn()
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("SET SEARCH_PATH TO motion_tree, public;")
+        sql_str = "SELECT * FROM "
+        cur.execute(sql_str)
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+
+def write_to_db():
+    try:
+        conn = get_conn()
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("SET SEARCH_PATH TO motion_tree, public;")
+        sql_str = ""
+        cur.execute(sql_str)
     except Exception as e:
         traceback.print_exc()
         print(e)

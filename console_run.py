@@ -1,5 +1,5 @@
 import sys
-import FileMngr
+import DataMngr
 from MotionTree import MotionTree
 from MotionTree_2 import MotionTree2
 from MotionTree_Init import MotionTreeInit
@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    files_dict = FileMngr.read_file_paths()
+    files_dict = DataMngr.read_file_paths()
     # Read parameter file to get parameters ( Protein PDB file names, protein chains, window size, domain size, ratio )
-    param_dict = FileMngr.read_param_file()
+    param_dict = DataMngr.read_param_file()
     # Initialise MotionTree object
     # print("Motion Tree Init")
     # engine = MotionTreeInit(files_dict, param_dict)
