@@ -1,9 +1,20 @@
 Protein 1 = 1oj7 (A)
 Protein 2 = 1oj7 (C)
-Effective Node = 1
+Whole Protein RMSD = 2.059208859584774Number of Effective Nodes = 1
+
+==========================================================================
+Effective Node 1
 Magnitude = 8.4
-Large Domain: 390 Residues
-Residues: 0   - 8   , 14  - 21  , 176 - 389 , 9   - 13  , 22  - 175
+--------------------------------------------------------------------------
+1oj7 (A)
+Large Domain: 231 Residues
+Residues: -2  - 6   , 12  - 19  , 174 - 387
 Small Domain: 159 Residues
-Residues: 9   - 13  , 22  - 175
-==============================================================
+Residues: 7   - 11  , 20  - 173
+
+1oj7 (C)
+Large Domain: 231 Residues
+Residues: -2  - 6   , 12  - 19  , 174 - 387
+Small Domain: 159 Residues
+Residues: 7   - 11  , 20  - 173
+

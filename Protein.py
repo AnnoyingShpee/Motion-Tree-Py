@@ -1,4 +1,5 @@
 import gemmi
+import numpy as np
 from scipy.spatial.distance import cdist
 """
 Gemmi follows a hierarchy:
@@ -7,9 +8,10 @@ Structure -> Model -> Chain -> [ResidueSpan] -> Residue -> Atom
 
 
 class Protein:
-    def __init__(self, name, file_path: str, chain: str = "A"):
+    def __init__(self, input_path, name, chain: str = "A"):
+        self.input_path = input_path
         self.name = name
-        self.file_path = file_path
+        self.file_path = f"{input_path}/{name}.pdb"
         self.chain_param: str = chain  # The chain specified in parameter input for the program
         # The indices of the residues that are utilised in the protein chain
         self.utilised_res_indices = None
@@ -36,9 +38,13 @@ class Protein:
         structure = gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
         return structure[0][self.chain_param].get_polymer()
 
-    def get_residue_nums(self, indices):
+    def get_residue_nums(self, indices, utilised=True):
         polymer = self.get_polymer()
-        return [polymer[i].seqid.num for i in self.utilised_res_indices[indices]]
+        if utilised:
+            return [polymer[i].seqid.num for i in self.utilised_res_indices[indices]]
+        else:
+            temp = np.delete(self.utilised_res_indices, indices)
+            return [polymer[i].seqid.num for i in temp]
 
     def print_chain(self):
         print(f"{self.get_structure().name}({self.chain_param}) - {self.utilised_atoms_coords.shape}")

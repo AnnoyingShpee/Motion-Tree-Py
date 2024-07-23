@@ -6,10 +6,9 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QSize, QProcess, Signal, QObject, QRunnable, Slot, QThreadPool
 from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QPushButton, QStatusBar, QFileDialog, QMessageBox, \
-    QGridLayout, QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QGridLayout, QLabel, QLineEdit, QSlider
+    QGridLayout, QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QGridLayout, QLabel, QLineEdit, QSlider, QComboBox
 from MotionTree import MotionTree
-from DataMngr import get_files, check_for_existing_motion_tree
-
+from DataMngr import get_motion_tree_outputs
 
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -41,7 +40,7 @@ class WorkerSignals(QObject):
     error = Signal(tuple)
     result = Signal(tuple)
     progress = Signal(object)
-    
+
 
 class Worker(QRunnable):
     def __init__(self, fn, *args, **kwargs):
@@ -54,7 +53,6 @@ class Worker(QRunnable):
 
         # Add the callback to our kwargs
         self.kwargs['progress_callback'] = self.signals.progress
-        self.kwargs['error_callback'] = self.signals.error
 
     @Slot()
     def run(self):
@@ -75,42 +73,35 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.app = app  # Declare an app member
         self.setWindowTitle("Motion Tree Builder")
-        self.resize(screensize[0]*0.8, screensize[1]*0.8)
+        self.resize(screensize[0] * 0.4, screensize[1] * 0.4)
+        self.move(screensize[0] * 0.05, screensize[1] * 0.05)
 
         self.file_form_widget = FileForm()
         self.param_form_widget = ParametersForm()
-        self.image_output_widget = OutputForm()
 
-        self.full_layout = QHBoxLayout()
         self.input_layout = QVBoxLayout()
         self.input_layout.addLayout(self.file_form_widget.layout)
         self.input_layout.addLayout(self.param_form_widget.layout)
-        self.full_layout.addLayout(self.input_layout)
-        self.full_layout.addLayout(self.image_output_widget.layout)
 
         self.param_form_widget.widgets["build_button"].clicked.connect(self.build_button_on_click)
         self.main_widget = QWidget()
-        self.main_widget.setLayout(self.full_layout)
+        self.main_widget.setLayout(self.input_layout)
         # self.layout.addLayout(image_output_widget.layout, 0, 1)
         # self._layout.addLayout()
         self.setCentralWidget(self.main_widget)
 
-        self.files_dict = {
-            "input_path": self.file_form_widget.widgets["input_path_text_box"].text(),
-            "output_path": self.file_form_widget.widgets["output_path_text_box"].text(),
-            "protein1": "",
-            "chain1id": "",
-            "protein2": "",
-            "chain2id": ""
-        }
-        self.params_dict = {
-            "spatial_proximity": float(self.param_form_widget.widgets["spatial_proximity"].value()),
-            "magnitude": int(self.param_form_widget.widgets["magnitude"].value()),
-            "dissimilarity": int(self.param_form_widget.widgets["dissimilarity"].value()),
-            "atoms": "ca"
-        }
+        self.input_path = self.file_form_widget.widgets["input_path_text_box"].text()
+        self.output_path = self.file_form_widget.widgets["output_path_text_box"].text()
+        self.protein_1_name = ""
+        self.chain_1 = ""
+        self.protein_2_name = ""
+        self.chain_2 = ""
+        self.spatial_proximity = float(self.param_form_widget.widgets["spatial_proximity"].value())
+        self.dissimilarity = int(self.param_form_widget.widgets["dissimilarity"].value())
+        self.magnitude = int(self.param_form_widget.widgets["magnitude"].value())
 
-        self.running = False
+        self.windows = []
+        self.max_window_count = 10
 
         # Menubar and menus
         menu_bar = self.menuBar()
@@ -118,23 +109,9 @@ class MainWindow(QMainWindow):
         builder_menu = menu_bar.addMenu("&Builder")
         settings_menu = menu_bar.addMenu("&Database")
         help_menu = menu_bar.addMenu("&Help")
+
         quit_menu = menu_bar.addMenu("Quit")
         quit_menu.triggered.connect(self.quit_app)
-
-        # # The toolbar
-        # tool_bar = QToolBar("Main Toolbar")
-        # tool_bar.setIconSize(QSize(16, 16))
-        # self.addToolBar(tool_bar)
-        #
-        # # Add quit action to toolbar
-        # tool_bar.addAction(quit_action)
-
-        # action_3 = QAction("Error", self)
-        # action_3.setStatusTip("About to give an error")
-        # action_3.triggered.connect(
-        #     lambda error_msg="Error given": self.button_clicked_error(error_msg)
-        # )
-        # tool_bar.addAction(action_3)
 
         self.param_form_widget.widgets["spatial_proximity"].valueChanged.connect(
             lambda: self.param_slider_on_change("spatial_proximity")
@@ -146,25 +123,14 @@ class MainWindow(QMainWindow):
             lambda: self.param_slider_on_change("dissimilarity")
         )
 
-        self.threadpool = QThreadPool()
+        self.thread_pool = QThreadPool()
 
         # Status bar
         self.setStatusBar(QStatusBar(self))
 
-    def toolbar_action_1_click(self):
-        print("Action triggered")
-        self.statusBar().showMessage("Action Triggered")
-
-    def toolbar_action_2_click(self):
-        print("Image clicked")
-        self.statusBar().showMessage("Image Clicked")
-
     def param_slider_on_change(self, param_name):
-        self.param_form_widget.widgets[f"{param_name}_value"].setText(str(self.param_form_widget.widgets[param_name].value()))
-    #     if data_type == float:
-    #         self.params_dict[param_name] = float(self.param_form_widget.widgets[param_name].value())
-    #     elif data_type == int:
-    #         self.params_dict[param_name] = int(self.param_form_widget.widgets[param_name].value())
+        self.param_form_widget.widgets[f"{param_name}_value"].setText(
+            str(self.param_form_widget.widgets[param_name].value()))
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Enter or event.key() == Qt.Key.Key_Return:
@@ -174,90 +140,44 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def build_button_on_click(self):
-        if self.running:
-            self.statusBar().showMessage("Motion Tree still building.")
-            return
         empty_boxes = self.check_protein_text_boxes()
         if len(empty_boxes) > 0:
             self.statusBar().showMessage("Invalid text")
-            self.invalid_text_input_error(empty_boxes)
-            return
-        self.files_dict = get_files(
-            self.file_form_widget.widgets["input_path_text_box"].text(),
-            self.file_form_widget.widgets["output_path_text_box"].text(),
-            self.file_form_widget.widgets["protein_1_text_box"].text(),
-            self.file_form_widget.widgets["protein_1_chain_text_box"].text(),
-            self.file_form_widget.widgets["protein_2_text_box"].text(),
-            self.file_form_widget.widgets["protein_2_chain_text_box"].text()
-        )
-        self.params_dict["spatial_proximity"] = float(self.param_form_widget.widgets["spatial_proximity"].value())
-        self.params_dict["magnitude"] = int(self.param_form_widget.widgets["magnitude"].value())
-        self.params_dict["dissimilarity"] = int(self.param_form_widget.widgets["dissimilarity"].value())
-        self.params_dict["atoms"] = "ca"
-        paths = check_for_existing_motion_tree(self.files_dict, self.params_dict)
+            self.create_error_dialog("invalid_text_box", empty_boxes)
+            return 1
 
-        if None in paths:
-            print("Paths has None value", paths)
-            self.running = True
-            print("Building Motion Tree")
-            self.statusBar().showMessage("Building Motion Tree")
-            print("starting worker")
-            worker = Worker(self.build_motion_tree)
-            worker.signals.progress.connect(self.display_progress)
-            worker.signals.result.connect(self.display_output)
-            worker.signals.finished.connect(self.thread_complete)
-            worker.signals.error.connect(self.display_error)
+        if len(self.windows) >= self.max_window_count:
+            self.statusBar().showMessage("Too many windows. Please remove some")
+            self.create_error_dialog("too_many_windows")
+            return 1
 
-            self.threadpool.start(worker)
-        else:
-            print("Paths is available", paths)
-            self.display_output(paths)
+        self.input_path = self.file_form_widget.widgets["input_path_text_box"].text()
+        self.output_path = self.file_form_widget.widgets["output_path_text_box"].text()
+        self.protein_1_name = self.file_form_widget.widgets["protein_1_text_box"].text().lower()
+        self.chain_1 = self.file_form_widget.widgets["protein_1_chain_text_box"].text().upper()
+        self.protein_2_name = self.file_form_widget.widgets["protein_2_text_box"].text().lower()
+        self.chain_2 = self.file_form_widget.widgets["protein_2_chain_text_box"].text().upper()
+        self.spatial_proximity = float(self.param_form_widget.widgets["spatial_proximity"].value())
+        self.dissimilarity = int(self.param_form_widget.widgets["dissimilarity"].value())
+        self.magnitude = int(self.param_form_widget.widgets["magnitude"].value())
 
-    def build_motion_tree(self, progress_callback, error_callback):
-        print("Motion Tree Test Init")
-        engine = MotionTree(self.files_dict, self.params_dict)
-        print("Done Tree Class Init")
-        progress_callback.emit(f"Initialising {self.files_dict['protein1']}")
-        progress_callback.emit(engine.init_protein(1))
-        progress_callback.emit(f"Initialising {self.files_dict['protein2']}")
-        progress_callback.emit(engine.init_protein(2))
-        engine.check_sequence_identity()
-        progress_callback.emit("Creating Distance Difference Matrix")
-        progress_callback.emit(engine.create_distance_difference_matrix())
-        progress_callback.emit("Building Motion Tree")
-        response, total_time = engine.run()
-        print("Get time taken")
-        progress_callback.emit(f"{response}. Time taken {str(total_time)}")
-        print("Checking")
-        diff_dist_npy, diff_dist_img, motion_tree = check_for_existing_motion_tree(self.files_dict, self.params_dict)
-        print("Result Callback")
-        return diff_dist_npy, diff_dist_img, motion_tree
+        print("Building Motion Tree")
+        self.statusBar().showMessage("Building Motion Tree")
+        new_window = OutputWindow(self.thread_pool, self.input_path, self.output_path,
+                                  self.protein_1_name, self.chain_1, self.protein_2_name, self.chain_2,
+                                  self.spatial_proximity, self.dissimilarity, self.magnitude)
+        new_window.closed.connect(self.remove_window)
+        new_window.show()
+        self.windows.append(new_window)
 
-    def display_progress(self, msg):
-        """
-        Displays the progress made by the program when the Motion Tree is being built
-        :param msg: The message to be displayed in the Status Bar
-        :return:
-        """
-        print(msg)
-        self.statusBar().showMessage(msg)
-
-    def display_output(self, paths):
-        print("paths", paths)
-        diff_dist_img = QPixmap(paths[1])
-        self.image_output_widget.widgets["diff_dist_mat_img"].setPixmap(diff_dist_img)
-        motion_tree_img = QPixmap(paths[2])
-        self.image_output_widget.widgets["motion_tree_img"].setPixmap(motion_tree_img)
-        # self.statusBar().showMessage(f"Time taken {str(msg)}")
-
-    def thread_complete(self):
-        self.running = False
-        print("Thread complete")
-
-    def display_error(self, msg):
-        print(msg)
-        self.statusBar().showMessage(str(msg[1]))
-        self.running = False
+        print("starting worker")
+        # worker = Worker(self.build_motion_tree)
+        # worker.signals.progress.connect(self.display_progress)
+        # worker.signals.result.connect(self.display_output)
+        # worker.signals.finished.connect(self.thread_complete)
+        # worker.signals.error.connect(self.display_error)
+        #
+        # self.thread_pool.start(worker)
 
     def check_protein_text_boxes(self):
         empty_boxes = []
@@ -269,28 +189,40 @@ class MainWindow(QMainWindow):
             empty_boxes.append("Protein 1")
         if len(self.file_form_widget.widgets["protein_2_text_box"].text().strip()) < 4:
             empty_boxes.append("Protein 2")
-        if len(self.file_form_widget.widgets["protein_1_chain_text_box"].text().strip()) < 1 or self.file_form_widget.widgets["protein_1_chain_text_box"].text().isdigit():
+        if len(self.file_form_widget.widgets["protein_1_chain_text_box"].text().strip()) < 1 or \
+                self.file_form_widget.widgets["protein_1_chain_text_box"].text().isdigit():
             empty_boxes.append("Protein 1 Chain")
-        if len(self.file_form_widget.widgets["protein_2_chain_text_box"].text().strip()) < 1 or self.file_form_widget.widgets["protein_2_chain_text_box"].text().isdigit():
+        if len(self.file_form_widget.widgets["protein_2_chain_text_box"].text().strip()) < 1 or \
+                self.file_form_widget.widgets["protein_2_chain_text_box"].text().isdigit():
             empty_boxes.append("Protein 2 Chain")
         return empty_boxes
 
-    def invalid_text_input_error(self, empty_boxes):
+    def create_error_dialog(self, *args):
         """
         Creates a QMessageBox that informs the user that text boxes have invalid inputs
-        :param empty_boxes: List of strings specifying which text boxes are invalid
         :return:
         """
-        if len(empty_boxes) > 1:
-            err_msg = "Multiple text boxes with invalid inputs!"
-        else:
-            err_msg = f"{empty_boxes[0]} text is invalid!"
+        err_msg = ""
+        if args[0] == "invalid_text_box":
+            if len(args[1]) > 1:
+                err_msg = "Multiple text boxes with invalid inputs!"
+            else:
+                err_msg = f"{args[1]} text is invalid!"
+        elif args[0] == "too_many_windows":
+            err_msg = f"Too many windows are opened. Please close a few. Maximum windows allowed to be opened: {self.max_window_count}"
         issue = QMessageBox.critical(self, "Error", err_msg, buttons=QMessageBox.Ok)
         if issue == QMessageBox.Ok:
             print("Ok clicked")
 
+    @Slot(QWidget)
+    def remove_window(self, window_to_close):
+        self.windows.remove(window_to_close)
+
     def quit_app(self):
         self.app.quit()
+        sys.exit()
+
+    def closeEvent(self, event) -> None:
         sys.exit()
 
 
@@ -458,7 +390,7 @@ class ParametersForm(QWidget):
                 "interval": 5
             },
             "magnitude": {
-                "minimum": 5,
+                "minimum": 1,
                 "maximum": 10,
                 "default": 5,
                 "interval": 1
@@ -574,18 +506,34 @@ class ParametersForm(QWidget):
         self.layout.addWidget(self.widgets["build_button"])
 
 
-class OutputForm(QWidget):
-    def __init__(self):
+class OutputWindow(QWidget):
+    closed = Signal(QWidget)
+
+    def __init__(self, thread_pool, input_path, output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, dis, magnitude):
         super().__init__()
+
+        self.setWindowTitle(f"{protein_1}_{chain_1}_{protein_2}_{chain_2}")
+        self.move(screensize[0] * 0.05, screensize[1] * 0.05)
+
+        self.thread_pool = thread_pool
+
         # Initialise the layout to place the widgets
         self.layout = QVBoxLayout()
+        self.input_path = input_path
+        self.output_path = output_path
+        self.protein_1 = protein_1
+        self.chain_1 = chain_1
+        self.protein_2 = protein_2
+        self.chain_2 = chain_2
+        self.spat_prox = spat_prox
+        self.diss = dis
+        self.magnitude = magnitude
 
         self.widgets = {
             "diff_dist_button": QPushButton("Difference Dist Matrix"),
-            "diff_dist_mat_img": QLabel(""),
             "motion_tree_button": QPushButton("Motion Tree"),
-            "motion_tree_img": QLabel(""),
-            "build_button": QPushButton("Build Motion Tree")
+            "diff_dist_mat_img": QLabel(""),
+            "motion_tree_img": QLabel("")
         }
 
         self.widgets["diff_dist_button"].clicked.connect(
@@ -595,32 +543,112 @@ class OutputForm(QWidget):
             lambda: self.change_image(1)
         )
 
+        combi_layout = QVBoxLayout()
+        combi_widget = QWidget()
+        protein_1_label = QLabel(f"Protein 1 : {self.protein_1} ({self.chain_1})")
+        protein_2_label = QLabel(f"Protein 2 : {self.protein_2} ({self.chain_2})")
+        sp_label = QLabel(f"Spatial Proximity : {self.spat_prox}")
+        dis_label = QLabel(f"Dissimilarity : {self.diss}")
+        mag_label = QLabel(f"Magnitude : {magnitude}")
+        self.progress_label = QLabel(f"Progress : Running")
+
+        combi_layout.addWidget(protein_1_label)
+        combi_layout.addWidget(protein_2_label)
+        combi_layout.addWidget(sp_label)
+        combi_layout.addWidget(dis_label)
+        combi_layout.addWidget(mag_label)
+        combi_layout.addWidget(self.progress_label)
+        combi_widget.setLayout(combi_layout)
+
         self._buttons_layout = QHBoxLayout()
         self._buttons_layout.addWidget(self.widgets["diff_dist_button"])
         self._buttons_layout.addWidget(self.widgets["motion_tree_button"])
-        self._buttons_layout_widget = QWidget()
-        self._buttons_layout_widget.setLayout(self._buttons_layout)
+        self._buttons_widget = QWidget()
+        self._buttons_widget.setLayout(self._buttons_layout)
 
-        self._image_output_layout = QStackedLayout()
-        self._image_output_layout.addWidget(self.widgets["diff_dist_mat_img"])
-        self._image_output_layout.addWidget(self.widgets["motion_tree_img"])
-        self._image_output_layout_widget = QWidget()
-        self._image_output_layout_widget.setLayout(self._image_output_layout)
+        self.image_output_layout = QStackedLayout()
+        self.image_output_layout.addWidget(self.widgets["diff_dist_mat_img"])
+        self.image_output_layout.addWidget(self.widgets["motion_tree_img"])
+        self.image_output_widget = QWidget()
+        self.image_output_widget.setLayout(self.image_output_layout)
 
-        self.layout.addWidget(self._buttons_layout_widget)
-        self.layout.addWidget(self._image_output_layout_widget)
+        self.layout.addWidget(combi_widget)
+        self.layout.addWidget(self._buttons_widget)
+        self.layout.addWidget(self.image_output_widget)
+        self.setLayout(self.layout)
+
+        worker = Worker(self.build_motion_tree)
+        worker.signals.progress.connect(self.display_progress)
+        worker.signals.result.connect(self.display_output)
+        worker.signals.finished.connect(self.thread_complete)
+        worker.signals.error.connect(self.display_error)
+
+        self.thread_pool.start(worker)
+
+    def build_motion_tree(self, progress_callback):
+        print("Motion Tree Test Init")
+        engine = MotionTree(self.input_path, self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2,
+                            self.spat_prox, self.diss, self.magnitude)
+        print("Done Tree Class Init")
+        progress_callback.emit(f"Initialising {self.protein_1}")
+        progress_callback.emit(engine.init_protein(1))
+        progress_callback.emit(f"Initialising {self.protein_2}")
+        progress_callback.emit(engine.init_protein(2))
+        engine.check_sequence_identity()
+        progress_callback.emit("Creating Distance Difference Matrix")
+        progress_callback.emit(engine.create_distance_difference_matrix())
+        progress_callback.emit("Building Motion Tree")
+        total_time, nodes, protein_str, param_str = engine.run()
+        print("Get time taken")
+        progress_callback.emit(
+            f"Motion Tree {protein_str} built. \nTime taken: {total_time}s. \nNumber of Effective Nodes: {nodes}")
+        print("Checking")
+        diff_dist_npy, diff_dist_img, motion_tree_img = get_motion_tree_outputs(
+            self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox, self.diss, self.magnitude)
+        print("Result Callback")
+        return diff_dist_npy, diff_dist_img, motion_tree_img, f"{protein_str}_{param_str}"
+
+    def display_progress(self, msg):
+        """
+        Displays the progress made by the program when the Motion Tree is being built
+        :param msg: The message to be displayed in the Status Bar
+        :return:
+        """
+        print(msg)
+        self.progress_label.setStyleSheet("color: 'black';")
+        self.progress_label.setText(msg)
+
+    def display_output(self, outputs):
+        print("paths", outputs)
+        diff_dist_img = QPixmap(outputs[1])
+        self.widgets["diff_dist_mat_img"].setPixmap(diff_dist_img)
+        motion_tree_img = QPixmap(outputs[2])
+        self.widgets["motion_tree_img"].setPixmap(motion_tree_img)
+        # self.statusBar().showMessage(f"Time taken {str(msg)}")
+
+    def thread_complete(self):
+        print("Thread complete")
+
+    def display_error(self, msg):
+        print(msg)
+        self.progress_label.setStyleSheet("color: 'red';")
+        self.progress_label.setText(f"Error : {str(msg[1])}")
 
     def change_image(self, index):
-        self._image_output_layout.setCurrentIndex(index)
+        self.image_output_layout.setCurrentIndex(index)
 
+    def closeEvent(self, event):
+        self.closed.emit(self)
+        super().closeEvent(event)
 
 class DoubleSlider(QSlider):
     """
     Custom QSlider class to handle float values and intervals as well as custom step values
     https://stackoverflow.com/questions/42820380/use-float-for-qslider
     """
+
     def __init__(self, *args, **kargs):
-        super(DoubleSlider, self).__init__( *args, **kargs)
+        super(DoubleSlider, self).__init__(*args, **kargs)
         self._min = 0
         self._max = 99
         self.interval = 1

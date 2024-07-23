@@ -22,7 +22,9 @@ def main():
     # cluster_2 = engine.run()
     # print("===============================================================================")
     print("Motion Tree Test")
-    engine = MotionTree(files_dict, param_dict)
+    engine = MotionTree(files_dict["input_path"], files_dict["output_path"],
+                        files_dict["protein_1"], files_dict["chain1id"], files_dict["protein_2"], files_dict["chain2id"],
+                        param_dict["spatial_proximity"], param_dict["dissimilarity"], param_dict["magnitude"])
     engine.init_protein(1)
     engine.init_protein(2)
     engine.check_sequence_identity()

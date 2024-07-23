@@ -7,6 +7,8 @@ from operator import itemgetter
 from pathlib import Path
 from scipy.cluster.hierarchy import dendrogram
 import psycopg2
+import gemmi
+from copy import deepcopy
 
 
 def read_file_paths():
@@ -56,41 +58,34 @@ def read_file_paths():
     return temp_dict
 
 
-def get_files(input_path: str, output_path: str, pdb_1: str, chain_1: str, pdb_2: str, chain_2: str):
-    temp_dict = {
-        "input_path": input_path,
-        "output_path": output_path,
-        "protein1": pdb_1.lower(),
-        "protein2": pdb_2.lower(),
-        "chain1id": chain_1.upper(),
-        "chain2id": chain_2.upper()
-    }
-
-    file_1 = temp_dict["input_path"] + "/" + temp_dict["protein1"] + ".pdb"
+def get_files(input_path: str, pdb_1: str, pdb_2: str):
+    file_1 = input_path + "/" + pdb_1 + ".pdb"
     path = Path(file_1)
     if not path.exists():
         try:
             urllib.request.urlretrieve(
-                f"https://files.rcsb.org/download/{temp_dict['protein1']}.pdb",
+                f"https://files.rcsb.org/download/{pdb_1}.pdb",
                 file_1
             )
         except Exception as e:
             traceback.print_exc()
             print(e)
+            return 1
 
-    file_2 = temp_dict["input_path"] + "/" + temp_dict["protein2"] + ".pdb"
+    file_2 = input_path + "/" + pdb_2 + ".pdb"
     path = Path(file_2)
     if not path.exists():
         try:
             urllib.request.urlretrieve(
-                f"https://files.rcsb.org/download/{temp_dict['protein2']}.pdb",
+                f"https://files.rcsb.org/download/{pdb_2}.pdb",
                 file_2
             )
         except Exception as e:
             traceback.print_exc()
             print(e)
+            return 1
 
-    return temp_dict
+    return 0
 
 
 def read_param_file():
@@ -117,42 +112,44 @@ def read_param_file():
     return temp_dict
 
 
-def save_results(files: dict, params: dict, data, image_type):
-    proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
-    params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
-    dir_path = f"{files['output_path']}/{proteins_folder}/{params_folder}"
+def save_results(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude, data, image_type):
+    proteins_folder = f"{protein_1}_{chain_1}_{protein_2}_{chain_2}"
+    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    dir_path = f"{output_path}/{proteins_folder}/{params_folder}"
     path = Path(dir_path)
+    dpi = 70
     if not path.is_dir():
         path.mkdir(parents=True)
     if image_type == "diff_dist_mat":
         fig_1, axis_1 = plt.subplots()
-        axis_1.set_title(f"{proteins_folder} Distance Difference Matrix")
+        axis_1.set_title(f"{proteins_folder}_{params_folder} Distance Difference Matrix")
         axis_1.set_xlabel("Residue Number")
         axis_1.set_ylabel("Residue Number")
         axis_1.matshow(data)
-        plt.savefig(f"{dir_path}/diff_dist_mat.png")
+        # plt.show()
+        plt.savefig(f"{dir_path}/diff_dist_mat.png", dpi=dpi)
         # Saves the difference distance numpy array into a .npy binary file
         np.save(f"{dir_path}/diff_dist_arr.npy", data)
     elif image_type == "dendrogram":
         fig_1, axis_1 = plt.subplots()
-        axis_1.set_title(f"{proteins_folder} Motion Tree")
+        axis_1.set_title(f"{proteins_folder}_{params_folder} Motion Tree")
         axis_1.set_xlabel("Residue Number")
         axis_1.set_ylabel("Magnitude (Å)")
         annotated_dendrogram(
-            files, params,
             data,
             truncate_mode='lastp',
             p=12,
             leaf_rotation=90.,
             leaf_font_size=12.,
             show_contracted=True,
-            annotate_above=params["magnitude"]
+            annotate_above=magnitude,
+            max_d=magnitude
         )
-        plt.savefig(f"{dir_path}/motion_tree.png")
+        plt.savefig(f"{dir_path}/motion_tree.png", dpi=dpi)
     plt.close()
 
 
-def annotated_dendrogram(files, params, *args, **kwargs):
+def annotated_dendrogram(*args, **kwargs):
     """
     Dendrogram customised for better readability.
     https://joernhees.de/blog/2015/08/26/scipy-hierarchical-clustering-and-dendrogram-tutorial/
@@ -186,10 +183,10 @@ def annotated_dendrogram(files, params, *args, **kwargs):
     return ddata
 
 
-def check_for_existing_motion_tree(files, params):
-    proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
-    params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
-    dir_path = f"{files['output_path']}/{proteins_folder}/{params_folder}"
+def get_motion_tree_outputs(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude):
+    proteins_folder = f"{protein_1}_{chain_1}_{protein_2}_{chain_2}"
+    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    dir_path = f"{output_path}/{proteins_folder}/{params_folder}"
     diff_dist_npy_file_path = f"{dir_path}/diff_dist_arr.npy"
     diff_dist_img_file_path = f"{dir_path}/diff_dist_mat.png"
     motion_tree_path = f"{dir_path}/motion_tree.png"
@@ -204,30 +201,152 @@ def check_for_existing_motion_tree(files, params):
         return None, None, None
 
 
-def write_domains_to_pdb(files: dict, params: dict, nodes):
-    proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
-    params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
-    file_path = f"{files['output_path']}/{proteins_folder}/{params_folder}/domains.pdb"
-
+def write_to_pdb(output_path, protein_1, protein_2, spat_prox, diss, magnitude, nodes):
     try:
-        fw = open(file_path, "w")
-        num_nodes = len(nodes)
+        proteins_folder = f"{protein_1.name}_{protein_1.chain_param}_{protein_2.name}_{protein_2.chain_param}"
+        params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+        pdb_path = f"{output_path}/{proteins_folder}/{params_folder}/{proteins_folder}.pdb"
+        fw = open(pdb_path, "w")
+
+        protein_1_polymer = protein_1.get_polymer()
+        protein_2_polymer = protein_2.get_polymer()
+        util_res_1 = protein_1.utilised_res_indices
+        util_res_2 = protein_2.utilised_res_indices
+
+        ptype = protein_1_polymer.check_polymer_type()
+        superimpose_result = gemmi.calculate_superposition(protein_1_polymer, protein_2_polymer,
+                                                           ptype, gemmi.SupSelect.CaP)
+        protein_2_polymer.transform_pos_and_adp(superimpose_result.transform)
+
+        atom_count = 1
+        subchain = protein_1.chain_param
+        fw.write(f"MODEL{'1'.rjust(9, ' ')}\n")
+        for i in util_res_1:
+            r = protein_1_polymer[i]
+            res_name = r.name.rjust(3, " ")
+            res_num = str(r.seqid.num).rjust(4, " ")
+            for a in r:
+                atom_num = str(atom_count).rjust(5, " ")
+                atom_name = a.name.ljust(4, " ")
+                x = str(round(a.pos.x, 3)).rjust(8, " ")
+                y = str(round(a.pos.y, 3)).rjust(8, " ")
+                z = str(round(a.pos.z, 3)).rjust(8, " ")
+                row = f"ATOM  {atom_num} {atom_name} {res_name} {subchain}{res_num}    {x}{y}{z}\n"
+                fw.write(row)
+                atom_count += 1
+        fw.write("ENDMDL\n")
+
+        atom_count = 1
+        subchain = protein_2.chain_param
+        fw.write(f"MODEL{'2'.rjust(9, ' ')}\n")
+        for i in util_res_2:
+            r = protein_2_polymer[i]
+            res_name = r.name.rjust(3, " ")
+            res_num = str(r.seqid.num).rjust(4, " ")
+            for a in r:
+                atom_num = str(atom_count).rjust(5, " ")
+                atom_name = a.name.ljust(4, " ")
+                x = str(round(a.pos.x, 3)).rjust(8, " ")
+                y = str(round(a.pos.y, 3)).rjust(8, " ")
+                z = str(round(a.pos.z, 3)).rjust(8, " ")
+                row = f"ATOM  {atom_num} {atom_name} {res_name} {subchain}{res_num}    {x}{y}{z}\n"
+                fw.write(row)
+                atom_count += 1
+        fw.write("ENDMDL\n")
+
+        return superimpose_result
 
     except Exception as e:
         traceback.print_exc()
         print(e)
 
 
-def write_info_file(files: dict, params: dict, nodes, protein_1, protein_2):
-    proteins_folder = f"{files['protein1']}_{files['chain1id']}_{files['protein2']}_{files['chain2id']}"
-    params_folder = f"sp_{params['spatial_proximity']}_dis_{params['dissimilarity']}_mag_{params['magnitude']}"
-    file_path = f"{files['output_path']}/{proteins_folder}/{params_folder}/domains.info"
+def write_domains_to_pml(output_path, protein_1, protein_2, spat_prox, diss, magnitude, nodes):
+    try:
+        proteins_folder = f"{protein_1.name}_{protein_1.chain_param}_{protein_2.name}_{protein_2.chain_param}"
+        params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+        num_nodes = len(nodes)
+
+        large_dom_col = "[0  ,0  ,255]"
+        small_dom_col = "[255,0  ,0  ]"
+        non_dom_col = "[128,128,128]"
+        regions = 0
+
+        for i in range(num_nodes-1, -1, -1):
+            node_num = num_nodes - i
+            pml_path = f"{output_path}/{proteins_folder}/{params_folder}/node_{node_num}.pml"
+            fw = open(pml_path, "w")
+            fw.write(f"load {proteins_folder}.pdb, node_{node_num}\n")
+
+            large_domain = nodes[i]["large_domain"]
+            small_domain = nodes[i]["small_domain"]
+
+            non_domain = deepcopy(nodes[i]["large_domain"])
+            non_domain.extend(small_domain)
+
+            # Colour the large domain
+            large_dom_res = protein_1.get_residue_nums(large_domain)
+            groups = group_continuous_num(large_dom_res)
+            first_line = True
+            for group in groups:
+                if first_line:
+                    fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                    first_line = False
+                else:
+                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+            fw.write(f"set_color colour{regions} = {large_dom_col}\n")
+            fw.write(f"color colour{regions}, region{regions}\n")
+            fw.write("deselect\n")
+
+            # Colour the small domain
+            regions += 1
+            small_dom_res = protein_1.get_residue_nums(small_domain)
+            groups = group_continuous_num(small_dom_res)
+            first_line = True
+            for group in groups:
+                if first_line:
+                    fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                    first_line = False
+                else:
+                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+            fw.write(f"set_color colour{regions} = {small_dom_col}\n")
+            fw.write(f"color colour{regions}, region{regions}\n")
+            fw.write("deselect\n")
+
+            # Colour the rest that are not domains as grey
+            regions += 1
+            non_dom_res = protein_1.get_residue_nums(non_domain, utilised=False)
+            if len(non_dom_res) > 0:
+                groups = group_continuous_num(non_dom_res)
+                first_line = True
+                for group in groups:
+                    if first_line:
+                        fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                        first_line = False
+                    else:
+                        fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+                fw.write(f"set_color colour{regions} = {non_dom_col}\n")
+                fw.write(f"color colour{regions}, region{regions}\n")
+                fw.write("deselect\n")
+
+            regions += 1
+
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+
+
+def write_info_file(output_path, protein_1, protein_2, spat_prox, diss, magnitude, nodes, superimpose_result):
+    proteins_folder = f"{protein_1.name}_{protein_1.chain_param}_{protein_2.name}_{protein_2.chain_param}"
+    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    file_path = f"{output_path}/{proteins_folder}/{params_folder}/domains.info"
 
     try:
         fw = open(file_path, "w")
         num_nodes = len(nodes)
-        fw.write(f"Protein 1 = {files['protein1']} ({files['chain1id']})\n")
-        fw.write(f"Protein 2 = {files['protein2']} ({files['chain2id']})\n")
+        fw.write(f"Protein 1 = {protein_1.name} ({protein_1.chain_param})\n")
+        fw.write(f"Protein 2 = {protein_2.name} ({protein_2.chain_param})\n")
+        fw.write(f"Whole Protein RMSD = {superimpose_result.rmsd}")
         fw.write(f"Number of Effective Nodes = {num_nodes}\n\n")
         for i in range(num_nodes - 1, -1, -1):
             fw.write("==========================================================================\n")
@@ -239,28 +358,28 @@ def write_info_file(files: dict, params: dict, nodes, protein_1, protein_2):
             large_size = len(large_domain)
             small_size = len(small_domain)
 
-            fw.write(f"{files['protein1']} ({files['chain1id']})\n")
+            fw.write(f"{protein_1.name} ({protein_1.chain_param})\n")
 
             fw.write(f"Large Domain: {str(large_size).ljust(3, ' ')} Residues\n")
             large_dom_res = protein_1.get_residue_nums(large_domain)
-            domain_res_str = build_dom_res_str(large_dom_res)
+            domain_res_str = build_info_dom_res_str(large_dom_res)
             fw.write(f"Residues: {domain_res_str}\n")
 
             fw.write(f"Small Domain: {str(small_size).ljust(3, ' ')} Residues\n")
             small_dom_res = protein_1.get_residue_nums(small_domain)
-            domain_res_str = build_dom_res_str(small_dom_res)
+            domain_res_str = build_info_dom_res_str(small_dom_res)
             fw.write(f"Residues: {domain_res_str}\n\n")
 
-            fw.write(f"{files['protein2']} ({files['chain2id']})\n")
+            fw.write(f"{protein_2.name} ({protein_2.chain_param})\n")
 
             fw.write(f"Large Domain: {str(large_size).ljust(3, ' ')} Residues\n")
             large_dom_res = protein_2.get_residue_nums(large_domain)
-            domain_res_str = build_dom_res_str(large_dom_res)
+            domain_res_str = build_info_dom_res_str(large_dom_res)
             fw.write(f"Residues: {domain_res_str}\n")
 
             fw.write(f"Small Domain: {str(small_size).ljust(3, ' ')} Residues\n")
             small_dom_res = protein_2.get_residue_nums(small_domain)
-            domain_res_str = build_dom_res_str(small_dom_res)
+            domain_res_str = build_info_dom_res_str(small_dom_res)
             fw.write(f"Residues: {domain_res_str}\n\n")
         fw.close()
     except Exception as e:
@@ -274,7 +393,7 @@ def group_continuous_num(data):
         yield list(map(itemgetter(1), g))
 
 
-def build_dom_res_str(residue_nums):
+def build_info_dom_res_str(residue_nums):
     domain_res_str = ""
     groups = group_continuous_num(residue_nums)
 
