@@ -9,13 +9,13 @@ Magnitude = 23.66
 4ake (A)
 Large Domain: 166 Residues
 Residues: 1   - 116 , 165 - 214
-Small Domain: 48  Residues
+Small Domain: 166 Residues
 Residues: 117 - 164
 
 2eck (A)
 Large Domain: 166 Residues
 Residues: 1   - 116 , 165 - 214
-Small Domain: 48  Residues
+Small Domain: 166 Residues
 Residues: 117 - 164
 
 ==========================================================================
@@ -25,13 +25,13 @@ Magnitude = 17.61
 4ake (A)
 Large Domain: 115 Residues
 Residues: 1   - 29  , 81  - 116 , 165 - 214
-Small Domain: 51  Residues
+Small Domain: 115 Residues
 Residues: 30  - 80 
 
 2eck (A)
 Large Domain: 115 Residues
 Residues: 1   - 29  , 81  - 116 , 165 - 214
-Small Domain: 51  Residues
+Small Domain: 115 Residues
 Residues: 30  - 80 
 
 ==========================================================================
@@ -41,12 +41,12 @@ Magnitude = 5.35
 4ake (A)
 Large Domain: 30  Residues
 Residues: 30  - 59 
-Small Domain: 21  Residues
+Small Domain: 30  Residues
 Residues: 60  - 80 
 
 2eck (A)
 Large Domain: 30  Residues
 Residues: 30  - 59 
-Small Domain: 21  Residues
+Small Domain: 30  Residues
 Residues: 60  - 80 
 

@@ -1,0 +1,52 @@
+Protein 1 = 1so7 (A)
+Protein 2 = 1vcu (A)
+Whole Protein RMSD = 2.1108491871507247Number of Effective Nodes = 3
+
+==========================================================================
+Effective Node 1
+Magnitude = 16.76
+--------------------------------------------------------------------------
+1so7 (A)
+Large Domain: 351 Residues
+Residues: 4   - 41  , 49  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 9   Residues
+Residues: 108 - 116
+
+1vcu (A)
+Large Domain: 351 Residues
+Residues: 4   - 41  , 49  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 9   Residues
+Residues: 108 - 116
+
+==========================================================================
+Effective Node 2
+Magnitude = 6.72
+--------------------------------------------------------------------------
+1so7 (A)
+Large Domain: 349 Residues
+Residues: 4   - 41  , 51  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 2   Residues
+Residues: 49  - 50 
+
+1vcu (A)
+Large Domain: 349 Residues
+Residues: 4   - 41  , 51  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 2   Residues
+Residues: 49  - 50 
+
+==========================================================================
+Effective Node 3
+Magnitude = 6.38
+--------------------------------------------------------------------------
+1so7 (A)
+Large Domain: 345 Residues
+Residues: 4   - 14  , 19  - 41  , 51  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 4   Residues
+Residues: 15  - 18 
+
+1vcu (A)
+Large Domain: 345 Residues
+Residues: 4   - 14  , 19  - 41  , 51  - 107 , 117 - 225 , 229 - 283 , 288 - 377
+Small Domain: 4   Residues
+Residues: 15  - 18 
+

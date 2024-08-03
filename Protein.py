@@ -8,10 +8,10 @@ Structure -> Model -> Chain -> [ResidueSpan] -> Residue -> Atom
 
 
 class Protein:
-    def __init__(self, input_path, name, chain: str = "A"):
+    def __init__(self, input_path, code, chain: str = "A"):
         self.input_path = input_path
-        self.name = name
-        self.file_path = f"{input_path}/{name}.pdb"
+        self.code = code
+        self.file_path = f"{input_path}/{code}.pdb"
         self.chain_param: str = chain  # The chain specified in parameter input for the program
         # The indices of the residues that are utilised in the protein chain
         self.utilised_res_indices = None
@@ -23,19 +23,19 @@ class Protein:
         self.distance_matrix = cdist(self.utilised_atoms_coords, self.utilised_atoms_coords, metric="euclidean")
 
     def get_structure(self):
-        return gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
+        return gemmi.read_pdb(self.file_path)
 
     def get_model(self):
-        structure = gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
+        structure = gemmi.read_pdb(self.file_path)
         return structure[0]
 
     def get_chain(self):
         # There is usually only one model in the structure
-        structure = gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
+        structure = gemmi.read_pdb(self.file_path)
         return structure[0][self.chain_param]
 
     def get_polymer(self):
-        structure = gemmi.read_structure(self.file_path, format=gemmi.CoorFormat.Pdb)
+        structure = gemmi.read_pdb(self.file_path)
         return structure[0][self.chain_param].get_polymer()
 
     def get_residue_nums(self, indices, utilised=True):

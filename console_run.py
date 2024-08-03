@@ -28,6 +28,7 @@ def main():
     engine.init_protein(1)
     engine.init_protein(2)
     engine.check_sequence_identity()
+    engine.dist_mat_processing()
     engine.create_distance_difference_matrix()
     engine.run()
     # cluster_3, link_mat = engine.run()

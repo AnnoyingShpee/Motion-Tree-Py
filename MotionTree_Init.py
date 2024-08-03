@@ -75,7 +75,7 @@ class MotionTreeInit:
         # Save the difference distance matrix before setting the diagonals to infinity for a cleaner visual.
         plt.matshow(self.dist_diff_mat_init)
         plt.savefig(
-            f"data/output/matrices/{self.protein_1.name}_{self.protein_1.chain_param}_{self.protein_2.name}_{self.protein_2.chain_param}_mat.png")
+            f"data/output/matrices/{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}_mat.png")
         np.fill_diagonal(self.dist_diff_mat_init, np.inf)
 
     def hierarchical_clustering(self, dist_diff_mat, n):
