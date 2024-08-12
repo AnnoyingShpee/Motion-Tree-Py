@@ -1,4 +1,0 @@
-host=cmpstudb-01.cmp.uea.ac.uk
-dbname=hss19zwu
-user=hss19zwu
-password=MomentActOff25?
