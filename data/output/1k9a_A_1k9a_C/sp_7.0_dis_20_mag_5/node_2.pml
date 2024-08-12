@@ -5,13 +5,15 @@ select region3, region3 + (node_2 and resi 325-340)
 select region3, region3 + (node_2 and resi 348-450)
 set_color colour3 = [0  ,0  ,255]
 color colour3, region3
-deselectselect region4, node_2 and resi 6-79
+deselect
+select region4, node_2 and resi 6-79
 select region4, region4 + (node_2 and resi 175-241)
 select region4, region4 + (node_2 and resi 251-271)
 select region4, region4 + (node_2 and resi 323-324)
 set_color colour4 = [255,0  ,0  ]
 color colour4, region4
-deselectselect region5, node_2 and resi 80-174
+deselect
+select region5, node_2 and resi 80-174
 set_color colour5 = [128,128,128]
 color colour5, region5
 deselect

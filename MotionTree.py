@@ -4,14 +4,14 @@ from copy import deepcopy
 from timeit import default_timer
 from statistics import mean
 from Protein import Protein
-from DataMngr import conn, ftp_files_to_disk, check_protein_exists, insert_protein_dist_mat, get_protein_dist_mat, \
-    save_results_to_disk, write_info_file, write_to_pdb, write_domains_to_pml, group_continuous_num
+from DataMngr import conn, ftp_files_to_disk, save_results_to_disk, write_info_file, write_to_pdb, \
+    write_domains_to_pml  #, group_continuous_num, check_protein_exists, insert_protein_dist_mat, get_protein_dist_mat,
 from scipy.spatial.distance import cdist
 
 
 class MotionTree:
     def __init__(self, input_path, output_path, protein_1_name, chain_1, protein_2_name, chain_2,
-                 spat_prox=7.0, dissimilarity=20, magnitude=5):
+                 spat_prox=7.0, clust_size=20, magnitude=5):
         self.input_path = input_path
         self.output_path = output_path
         self.protein_1_name = protein_1_name
@@ -19,12 +19,13 @@ class MotionTree:
         self.protein_2_name = protein_2_name
         self.chain_2 = chain_2
         self.spat_prox = spat_prox
-        self.diss = dissimilarity
+        self.clust_size = clust_size
         self.magnitude = magnitude
         # Initialise proteins
         self.protein_1 = None
         self.protein_2 = None
         self.res_nums = []
+        self.similarity = 0
         # The starting distance difference matrix
         self.diff_dist_mat_init = None
         self.num_residues = None
@@ -66,12 +67,13 @@ class MotionTree:
         for i in range(len(res_names_1)):
             if res_names_1[i] == res_names_2[i]:
                 correct_hit += 1
-        similarity = correct_hit / len(res_names_1)
-        # print(similarity)
-        if similarity < 0.4:
+        self.similarity = correct_hit / len(res_names_1)
+        print(self.similarity)
+        if self.similarity < 0.4:
             raise ValueError("Sequence Identity less than 40%")
 
         self.num_residues = len(utilised_res_ind_1)
+        print(self.num_residues)
         self.protein_1.utilised_atoms_coords = np.asarray(coords_1)
         self.protein_1.utilised_res_indices = np.asarray(utilised_res_ind_1)
         self.protein_2.utilised_atoms_coords = np.asarray(coords_2)
@@ -85,10 +87,67 @@ class MotionTree:
         ptype = self.protein_1.get_polymer().check_polymer_type()
 
         chain_superimpose_result: gemmi.SupResult = gemmi.calculate_superposition(self.protein_1.get_polymer(),
-                                                                                       self.protein_2.get_polymer(),
-                                                                                       ptype, gemmi.SupSelect.CaP)
+                                                                                  self.protein_2.get_polymer(),
+                                                                                  ptype, gemmi.SupSelect.CaP)
+        print(chain_superimpose_result.rmsd)
         if chain_superimpose_result.rmsd < 2:
             raise ValueError("Proteins RMSD less than 2")
+
+    # def dist_mat_processing(self):
+    #     """
+    #     Handles the distance matrices of the proteins. First connects to the database to see if the proteins with
+    #     the distance matrices exist. If it does not exist, the distance matrix is created and stored into the database.
+    #     If something goes wrong when connecting to the database, go straight to offline data management, which is using
+    #     the disk storage.
+    #     :return:
+    #     """
+    #     while True:
+    #         if conn is None:
+    #             self.is_db_connected = False
+    #             break
+    #         result = check_protein_exists(self.protein_1.code, self.protein_1.chain_param)
+    #         if result == -1:
+    #             self.is_db_connected = False
+    #             break
+    #         elif not result:
+    #             self.protein_1.get_distance_matrix()
+    #             result = insert_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param, self.protein_1.distance_matrix)
+    #             if result == -1:
+    #                 self.is_db_connected = False
+    #                 break
+    #         else:
+    #             result = get_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param)
+    #             if type(result) == int:
+    #                 self.is_db_connected = False
+    #                 self.protein_1.get_distance_matrix()
+    #                 break
+    #             self.protein_1.distance_matrix = result
+    #
+    #         result = check_protein_exists(self.protein_2.code, self.protein_2.chain_param)
+    #         if result == -1:
+    #             self.is_db_connected = False
+    #             break
+    #         elif not result:
+    #             self.protein_2.get_distance_matrix()
+    #             result = insert_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param,
+    #                                              self.protein_2.distance_matrix)
+    #             if result == -1:
+    #                 self.is_db_connected = False
+    #                 break
+    #         else:
+    #             result = get_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param)
+    #             if type(result) == int:
+    #                 self.is_db_connected = False
+    #                 self.protein_2.get_distance_matrix()
+    #                 break
+    #             self.protein_2.distance_matrix = result
+    #         break
+    #
+    #     if not self.is_db_connected and self.protein_1.distance_matrix is None:
+    #         self.protein_1.get_distance_matrix()
+    #         self.protein_2.get_distance_matrix()
+    #     elif not self.is_db_connected and self.protein_2.distance_matrix is None:
+    #         self.protein_2.get_distance_matrix()
 
     def dist_mat_processing(self):
         """
@@ -98,56 +157,8 @@ class MotionTree:
         the disk storage.
         :return:
         """
-        while True:
-            if conn is None:
-                self.is_db_connected = False
-                break
-            result = check_protein_exists(self.protein_1.code, self.protein_1.chain_param)
-            if result == -1:
-                self.is_db_connected = False
-                break
-            elif not result:
-                self.protein_1.get_distance_matrix()
-                result = insert_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param, self.protein_1.distance_matrix)
-                if result == -1:
-                    self.is_db_connected = False
-                    break
-            else:
-                result = get_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param)
-                if type(result) == int:
-                    self.is_db_connected = False
-                    self.protein_1.get_distance_matrix()
-                    break
-                self.protein_1.distance_matrix = result
-
-            result = check_protein_exists(self.protein_2.code, self.protein_2.chain_param)
-            if result == -1:
-                self.is_db_connected = False
-                break
-            elif not result:
-                self.protein_2.get_distance_matrix()
-                result = insert_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param,
-                                                 self.protein_2.distance_matrix)
-                if result == -1:
-                    self.is_db_connected = False
-                    break
-            else:
-                result = get_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param)
-                if type(result) == int:
-                    self.is_db_connected = False
-                    self.protein_2.get_distance_matrix()
-                    break
-                self.protein_2.distance_matrix = result
-            break
-
-        if not self.is_db_connected and self.protein_1.distance_matrix is None:
-            self.protein_1.get_distance_matrix()
-            self.protein_2.get_distance_matrix()
-        elif not self.is_db_connected and self.protein_2.distance_matrix is None:
-            self.protein_2.get_distance_matrix()
-
-        # self.protein_1.print_dist_mat()
-        # self.protein_2.print_dist_mat()
+        self.protein_1.get_distance_matrix()
+        self.protein_2.get_distance_matrix()
 
     def get_ca_atoms_coords(self):
         """
@@ -239,7 +250,7 @@ class MotionTree:
             self.protein_2.code,
             self.protein_2.chain_param,
             self.spat_prox,
-            self.diss,
+            self.clust_size,
             self.magnitude,
             self.diff_dist_mat_init,
             "diff_dist_mat"
@@ -276,16 +287,16 @@ class MotionTree:
             self.protein_2.code,
             self.protein_2.chain_param,
             self.spat_prox,
-            self.diss,
+            self.clust_size,
             self.magnitude,
             self.link_mat,
             "dendrogram"
         )
-        superimpose_result = write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.diss, self.magnitude)
-        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.diss, self.magnitude, self.nodes)
-        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.diss, self.magnitude, self.nodes, superimpose_result)
+        superimpose_result = write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude)
+        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude, self.nodes)
+        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude, self.nodes, superimpose_result)
         proteins_str = f"{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}"
-        params_str = f"sp_{self.spat_prox}_dis_{self.diss}_mag_{self.magnitude}"
+        params_str = f"sp_{self.spat_prox}_clust_{self.clust_size}_mag_{self.magnitude}"
         return round(total_time, 2), len(self.nodes), proteins_str, params_str
 
     def hierarchical_clustering(self, diff_dist_mat, n):
@@ -317,7 +328,7 @@ class MotionTree:
                 else:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
-            if min_dist >= self.magnitude:
+            if min_dist >= self.magnitude and len(self.clusters[cluster_pair[0]]) > self.clust_size and len(self.clusters[cluster_pair[1]]) > self.clust_size:
                 self.clusters[cluster_pair[0]].sort()
                 self.clusters[cluster_pair[1]].sort()
                 cluster_0_size = len(self.clusters[cluster_pair[0]])
@@ -412,14 +423,9 @@ class MotionTree:
         # https://stackoverflow.com/questions/8486294/how-do-i-add-an-extra-column-to-a-numpy-array
         new_distance_matrix = np.c_[np.copy(diff_dist_mat), np.full(diff_dist_mat.shape[0], np.inf)]
         new_distance_matrix = np.r_[new_distance_matrix, np.full((1, new_distance_matrix.shape[1]), np.inf)]
-        # new_distance_matrix[:, cluster_pair[0]] = np.inf
-        # new_distance_matrix[cluster_pair[0], :] = np.inf
-        # new_distance_matrix[:, cluster_pair[1]] = np.inf
-        # new_distance_matrix[cluster_pair[1], :] = np.inf
         new_distance_matrix[cluster_pair, :] = np.inf
         new_distance_matrix[:, cluster_pair] = np.inf
-        # if cluster_pair[0] == 287:
-        #     print(new_distance_matrix[cluster_pair[0], :])
+        diss_count = 20
         for k in self.clusters.keys():
             # Ignore the cluster pairs
             if k != cluster_pair[0] and k != cluster_pair[1]:
@@ -430,9 +436,9 @@ class MotionTree:
                 # dists = []
                 # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[0]]))
                 # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[1]]))
-                if len(dists) > 20:
+                if len(dists) > diss_count:
                     dists.sort(reverse=True)
-                    new_distance_matrix[new_id, k] = mean(dists[:20])
+                    new_distance_matrix[new_id, k] = mean(dists[:diss_count])
                 else:
                     new_distance_matrix[new_id, k] = mean(dists)
                 new_distance_matrix[k, new_id] = new_distance_matrix[new_id, k]

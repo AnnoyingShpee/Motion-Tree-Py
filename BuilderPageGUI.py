@@ -176,15 +176,15 @@ class ParametersFormWidget(QWidget):
                 "default": 7.0,
                 "interval": 0.5
             },
-            "dissimilarity": {
-                "minimum": 10,
-                "maximum": 50,
-                "default": 20,
-                "interval": 5
+            "clust_size": {
+                "minimum": 0,
+                "maximum": 30,
+                "default": 5,
+                "interval": 1
             },
             "magnitude": {
                 "minimum": 1,
-                "maximum": 10,
+                "maximum": 30,
                 "default": 5,
                 "interval": 1
             }
@@ -197,11 +197,11 @@ class ParametersFormWidget(QWidget):
             "spatial_proximity_max_label": QLabel(str(self._widgets_info["spatial_proximity"]["maximum"])),
             "spatial_proximity_value": QLabel(str(self._widgets_info["spatial_proximity"]["default"])),
 
-            "dissimilarity_label": QLabel("The number of residues to average when cluster is large enough: "),
-            "dissimilarity_min_label": QLabel(str(self._widgets_info["dissimilarity"]["minimum"])),
-            "dissimilarity": DoubleSlider(Qt.Orientation.Horizontal),
-            "dissimilarity_max_label": QLabel(str(self._widgets_info["dissimilarity"]["maximum"])),
-            "dissimilarity_value": QLabel(str(self._widgets_info["dissimilarity"]["default"])),
+            "clust_size_label": QLabel("The minimum number of residues in a cluster to be considered an effective node: "),
+            "clust_size_min_label": QLabel(str(self._widgets_info["clust_size"]["minimum"])),
+            "clust_size": DoubleSlider(Qt.Orientation.Horizontal),
+            "clust_size_max_label": QLabel(str(self._widgets_info["clust_size"]["maximum"])),
+            "clust_size_value": QLabel(str(self._widgets_info["clust_size"]["default"])),
 
             "magnitude_label": QLabel("The minimum magnitude for an effective node: "),
             "magnitude_min_label": QLabel(str(self._widgets_info["magnitude"]["minimum"])),
@@ -236,31 +236,31 @@ class ParametersFormWidget(QWidget):
         self._spatial_proximity_slider_widget = QWidget()
         self._spatial_proximity_slider_widget.setLayout(self._spatial_proximity_slider_layout)
 
-        self.widgets["dissimilarity"].setMinimum(
-            self._widgets_info["dissimilarity"]["minimum"]
+        self.widgets["clust_size"].setMinimum(
+            self._widgets_info["clust_size"]["minimum"]
         )
-        self.widgets["dissimilarity"].setMaximum(
-            self._widgets_info["dissimilarity"]["maximum"]
+        self.widgets["clust_size"].setMaximum(
+            self._widgets_info["clust_size"]["maximum"]
         )
-        self.widgets["dissimilarity"].setInterval(
-            self._widgets_info["dissimilarity"]["interval"]
+        self.widgets["clust_size"].setInterval(
+            self._widgets_info["clust_size"]["interval"]
         )
-        self.widgets["dissimilarity"].setValue(
-            self._widgets_info["dissimilarity"]["default"]
+        self.widgets["clust_size"].setValue(
+            self._widgets_info["clust_size"]["default"]
         )
 
-        self._dissimilarity_label_layout = QHBoxLayout()
-        self._dissimilarity_label_layout.addWidget(self.widgets["dissimilarity_label"])
-        self._dissimilarity_label_layout.addWidget(self.widgets["dissimilarity_value"])
-        self._dissimilarity_label_widget = QWidget()
-        self._dissimilarity_label_widget.setLayout(self._dissimilarity_label_layout)
+        self._clust_size_label_layout = QHBoxLayout()
+        self._clust_size_label_layout.addWidget(self.widgets["clust_size_label"])
+        self._clust_size_label_layout.addWidget(self.widgets["clust_size_value"])
+        self._clust_size_label_widget = QWidget()
+        self._clust_size_label_widget.setLayout(self._clust_size_label_layout)
 
-        self._dissimilarity_slider_layout = QHBoxLayout()
-        self._dissimilarity_slider_layout.addWidget(self.widgets["dissimilarity_min_label"])
-        self._dissimilarity_slider_layout.addWidget(self.widgets["dissimilarity"])
-        self._dissimilarity_slider_layout.addWidget(self.widgets["dissimilarity_max_label"])
-        self._dissimilarity_slider_widget = QWidget()
-        self._dissimilarity_slider_widget.setLayout(self._dissimilarity_slider_layout)
+        self._clust_size_slider_layout = QHBoxLayout()
+        self._clust_size_slider_layout.addWidget(self.widgets["clust_size_min_label"])
+        self._clust_size_slider_layout.addWidget(self.widgets["clust_size"])
+        self._clust_size_slider_layout.addWidget(self.widgets["clust_size_max_label"])
+        self._clust_size_slider_widget = QWidget()
+        self._clust_size_slider_widget.setLayout(self._clust_size_slider_layout)
 
         self.widgets["magnitude"].setMinimum(
             self._widgets_info["magnitude"]["minimum"]
@@ -290,8 +290,8 @@ class ParametersFormWidget(QWidget):
 
         self.layout.addWidget(self._spatial_proximity_label_widget)
         self.layout.addWidget(self._spatial_proximity_slider_widget)
-        self.layout.addWidget(self._dissimilarity_label_widget)
-        self.layout.addWidget(self._dissimilarity_slider_widget)
+        self.layout.addWidget(self._clust_size_label_widget)
+        self.layout.addWidget(self._clust_size_slider_widget)
         self.layout.addWidget(self._magnitude_label_widget)
         self.layout.addWidget(self._magnitude_slider_widget)
 

@@ -15,7 +15,7 @@ from copy import deepcopy
 def read_file_paths():
     temp_dict = {}
     try:
-        fr = open(f"data/input/file_mngr.txt", "r")
+        fr = open(f"./data/input/file_mngr.txt", "r")
         lines = fr.readlines()
         for line in lines:
             if not ("#" in line):
@@ -92,7 +92,7 @@ def ftp_files_to_disk(input_path: str, pdb_1: str, pdb_2: str):
 def read_param_file():
     temp_dict = {}
     try:
-        fr = open(f"data/input/params.txt", "r")
+        fr = open(f"./data/input/params.txt", "r")
         lines = fr.readlines()
         for line in lines:
             if not ("#" in line):
@@ -101,7 +101,7 @@ def read_param_file():
                 tokens = line.split("=")
                 param_name = tokens[0]
                 param_val = tokens[1]
-                if param_name == "magnitude" or param_name == "dissimilarity":
+                if param_name == "magnitude" or param_name == "cluster_size":
                     param_val = int(tokens[1])
                 elif param_name == "spatial_proximity":
                     param_val = float(tokens[1])
@@ -113,9 +113,9 @@ def read_param_file():
     return temp_dict
 
 
-def save_results_to_disk(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude, data, image_type):
+def save_results_to_disk(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude, data, image_type):
     proteins_folder = f"{protein_1}_{chain_1}_{protein_2}_{chain_2}"
-    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    params_folder = f"sp_{spat_prox}_clust_{clust_size}_mag_{magnitude}"
     dir_path = f"{output_path}/{proteins_folder}/{params_folder}"
     path = Path(dir_path)
     dpi = 70
@@ -184,9 +184,9 @@ def annotated_dendrogram(*args, **kwargs):
     return ddata
 
 
-def get_motion_tree_outputs(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude):
+def get_motion_tree_outputs(output_path, protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude):
     proteins_folder = f"{protein_1}_{chain_1}_{protein_2}_{chain_2}"
-    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    params_folder = f"sp_{spat_prox}_clust_{clust_size}_mag_{magnitude}"
     dir_path = f"{output_path}/{proteins_folder}/{params_folder}"
     diff_dist_npy_file_path = f"{dir_path}/diff_dist_arr.npy"
     diff_dist_img_file_path = f"{dir_path}/diff_dist_mat.png"
@@ -202,10 +202,10 @@ def get_motion_tree_outputs(output_path, protein_1, chain_1, protein_2, chain_2,
         return None, None, None
 
 
-def write_to_pdb(output_path, protein_1, protein_2, spat_prox, diss, magnitude):
+def write_to_pdb(output_path, protein_1, protein_2, spat_prox, clust_size, magnitude):
     try:
         proteins_folder = f"{protein_1.code}_{protein_1.chain_param}_{protein_2.code}_{protein_2.chain_param}"
-        params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+        params_folder = f"sp_{spat_prox}_clust_{clust_size}_mag_{magnitude}"
         pdb_path = f"{output_path}/{proteins_folder}/{params_folder}/{proteins_folder}.pdb"
         fw = open(pdb_path, "w")
 
@@ -262,10 +262,10 @@ def write_to_pdb(output_path, protein_1, protein_2, spat_prox, diss, magnitude):
         print(e)
 
 
-def write_domains_to_pml(output_path, protein_1, protein_2, spat_prox, diss, magnitude, nodes):
+def write_domains_to_pml(output_path, protein_1, protein_2, spat_prox, clust_size, magnitude, nodes):
     try:
         proteins_folder = f"{protein_1.code}_{protein_1.chain_param}_{protein_2.code}_{protein_2.chain_param}"
-        params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+        params_folder = f"sp_{spat_prox}_clust_{clust_size}_mag_{magnitude}"
         num_nodes = len(nodes)
 
         large_dom_col = "[0  ,0  ,255]"
@@ -337,9 +337,9 @@ def write_domains_to_pml(output_path, protein_1, protein_2, spat_prox, diss, mag
         print(e)
 
 
-def write_info_file(output_path, protein_1, protein_2, spat_prox, diss, magnitude, nodes, superimpose_result):
+def write_info_file(output_path, protein_1, protein_2, spat_prox, clust_size, magnitude, nodes, superimpose_result):
     proteins_folder = f"{protein_1.code}_{protein_1.chain_param}_{protein_2.code}_{protein_2.chain_param}"
-    params_folder = f"sp_{spat_prox}_dis_{diss}_mag_{magnitude}"
+    params_folder = f"sp_{spat_prox}_clust_{clust_size}_mag_{magnitude}"
     file_path = f"{output_path}/{proteins_folder}/{params_folder}/domains.info"
 
     try:
@@ -347,7 +347,7 @@ def write_info_file(output_path, protein_1, protein_2, spat_prox, diss, magnitud
         num_nodes = len(nodes)
         fw.write(f"Protein 1 = {protein_1.code} ({protein_1.chain_param})\n")
         fw.write(f"Protein 2 = {protein_2.code} ({protein_2.chain_param})\n")
-        fw.write(f"Whole Protein RMSD = {superimpose_result.rmsd}")
+        fw.write(f"Whole Protein RMSD = {superimpose_result.rmsd}\n")
         fw.write(f"Number of Effective Nodes = {num_nodes}\n\n")
         for i in range(num_nodes - 1, -1, -1):
             fw.write("==========================================================================\n")
@@ -427,7 +427,6 @@ try:
             else:
                 conn_str += f" {tokens[0]}='{tokens[1]}'"
 except Exception as e:
-    traceback.print_exc()
     print(e)
 
 conn = None
@@ -437,75 +436,75 @@ try:
     cur = conn.cursor()
     cur.execute("SET SEARCH_PATH TO motion_tree_py, public;")
 except Exception as e:
-    traceback.print_exc()
     print(e)
 
 
-def check_protein_exists(protein, chain):
-    try:
-        cur.execute(
-            """
-            SELECT EXISTS(SELECT 1 FROM proteins
-            WHERE protein_id=%s AND protein_chain=%s);
-            """,
-            (protein, chain)
-        )
-        is_exists = cur.fetchone()
-        return is_exists[0]
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        return -1
+# def check_protein_exists(protein, chain):
+#     try:
+#         cur.execute(
+#             """
+#             SELECT EXISTS(SELECT 1 FROM proteins
+#             WHERE protein_id=%s AND protein_chain=%s);
+#             """,
+#             (protein, chain)
+#         )
+#         is_exists = cur.fetchone()
+#         return is_exists[0]
+#     except Exception as e:
+#         traceback.print_exc()
+#         print(e)
+#         return -1
+#
+#
+# def insert_protein_dist_mat(protein, chain, dist_mat):
+#     try:
+#         dist_mat_bytes = pickle.dumps(dist_mat)
+#         cur.execute(
+#             """
+#             INSERT INTO proteins (protein_id, protein_chain, dist_mat)
+#             VALUES (%s, %s, %s);
+#             """,
+#             (protein, chain, dist_mat_bytes)
+#         )
+#         return 0
+#     except Exception as e:
+#         traceback.print_exc()
+#         print(e)
+#         return -1
+#
+#
+# def get_protein_dist_mat(protein, chain):
+#     # conn = psycopg2.connect(conn_str)
+#     try:
+#         # conn.autocommit = True
+#         # cur = conn.cursor()
+#         # cur.execute("SET SEARCH_PATH TO motion_tree_py, public;")
+#         cur.execute(
+#             """
+#             SELECT protein_id, protein_chain, dist_mat FROM proteins
+#             WHERE protein_id=%s AND protein_chain=%s;
+#             """,
+#             (protein, chain)
+#         )
+#         row = cur.fetchone()
+#         dist_mat = pickle.loads(row[2])
+#         return dist_mat
+#     except Exception as e:
+#         traceback.print_exc()
+#         print(e)
+#         return -1
 
 
-def insert_protein_dist_mat(protein, chain, dist_mat):
-    try:
-        dist_mat_bytes = pickle.dumps(dist_mat)
-        cur.execute(
-            """
-            INSERT INTO proteins (protein_id, protein_chain, dist_mat)
-            VALUES (%s, %s, %s);
-            """,
-            (protein, chain, dist_mat_bytes)
-        )
-        return 0
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        return -1
-
-
-def get_protein_dist_mat(protein, chain):
-    # conn = psycopg2.connect(conn_str)
-    try:
-        # conn.autocommit = True
-        # cur = conn.cursor()
-        # cur.execute("SET SEARCH_PATH TO motion_tree_py, public;")
-        cur.execute(
-            """
-            SELECT protein_id, protein_chain, dist_mat FROM proteins 
-            WHERE protein_id=%s AND protein_chain=%s;
-            """,
-            (protein, chain)
-        )
-        row = cur.fetchone()
-        dist_mat = pickle.loads(row[2])
-        return dist_mat
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        return -1
-
-def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox, diss):
+def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size):
     try:
         cur.execute(
             """
             SELECT EXISTS(
             SELECT 1 FROM motion_trees WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND 
-            spatial_proximity=%s AND dissimilarity=%s
+            spatial_proximity=%s AND cluster_size=%s
             )
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox, diss)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
         )
         row = cur.fetchone()
         return row[0]
@@ -515,14 +514,14 @@ def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox, 
         return -1
 
 
-def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, diss):
+def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size):
     try:
         cur.execute(
             """
             SELECT diff_dist_mat, link_mat FROM motion_trees
-            WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s AND dissimilarity=%s;
+            WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s AND cluster_size=%s;
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox, diss)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
         )
         rows = cur.fetchall()
         diff_dist_mat = pickle.loads(rows[0][0])
@@ -534,7 +533,7 @@ def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, diss):
         return -1, -1
 
 
-def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, diff_dist_mat, link_mat, motion_tree_exist):
+def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, seq_identity, time_taken, diff_dist_mat, link_mat, motion_tree_exist):
     try:
         diff_dist_bin = pickle.dumps(diff_dist_mat)
         link_bin = pickle.dumps(link_mat)
@@ -542,19 +541,19 @@ def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, 
             cur.execute(
                 """
                 UPDATE motion_trees 
-                SET diff_dist_mat=%s, link_mat=%s
+                SET time_taken=%s, diff_dist_mat=%s, link_mat=%s
                 WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s AND 
-                dissimilarity=%s;
+                cluster_size=%s;
                 """,
-                (diff_dist_bin, link_bin, protein_1, chain_1, protein_2, chain_2, spat_prox, diss)
+                (round(time_taken, 2), diff_dist_bin, link_bin, protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
             )
         else:
             cur.execute(
                 """
                 INSERT INTO motion_trees
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
                 """,
-                (protein_1, chain_1, protein_2, chain_2, spat_prox, diss, diff_dist_bin, link_bin)
+                (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, round(seq_identity, 2), round(time_taken, 2), diff_dist_bin, link_bin)
             )
         return 0
     except Exception as e:
@@ -563,16 +562,16 @@ def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, 
         return -1
 
 
-def check_nodes_exist(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude):
+def check_nodes_exist(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude):
     try:
         cur.execute(
             """
             SELECT EXISTS(
             SELECT * FROM nodes WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s
-            AND dissimilarity=%s AND magnitude=%s 
+            AND cluster_size=%s AND magnitude=%s 
             );
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude)
         )
         row = cur.fetchone()
         return row[0]
@@ -582,15 +581,15 @@ def check_nodes_exist(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, m
         return -1
 
 
-def get_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude):
+def get_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude):
     try:
         cur.execute(
             """
             SELECT node, distance, large_domain, small_domain FROM nodes
             WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s 
-            AND dissimilarity=%s AND magnitude=%s;
+            AND cluster_size=%s AND magnitude=%s;
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude)
         )
         # List of tuples
         rows = cur.fetchall()
@@ -621,16 +620,16 @@ def get_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude
         return -1
 
 
-def insert_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude, nodes, nodes_exist):
+def insert_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude, nodes, nodes_exist):
     try:
         if nodes_exist:
             cur.execute(
                 """
                 DELETE FROM nodes
                 WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s 
-                AND dissimilarity=%s AND magnitude=%s;
+                AND cluster_size=%s AND magnitude=%s;
                 """,
-                (protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude)
+                (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude)
             )
         for key in nodes.keys():
             large_domain_groups = group_continuous_num(nodes[key]["large_domain"])
@@ -650,7 +649,7 @@ def insert_nodes(protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnit
                 INSERT INTO nodes
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
                 """,
-                (protein_1, chain_1, protein_2, chain_2, spat_prox, diss, magnitude, key, nodes[key]["magnitude"], large_domain_bin, small_domain_bin)
+                (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, magnitude, key, nodes[key]["magnitude"], large_domain_bin, small_domain_bin)
             )
         return 0
     except Exception as e:

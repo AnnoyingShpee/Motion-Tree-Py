@@ -1,24 +1,18 @@
 import sys
 import ctypes
-import traceback
 from BuilderPageGUI import BuilderPage
 from HelpPageGUI import HelpPage
 from OutputWindowGUI import OutputWindow
-from pathlib import Path
-from PySide6.QtCore import Qt, QSize, QProcess, Signal, QObject, QRunnable, Slot, QThreadPool
-from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent
-from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QPushButton, QStatusBar, QFileDialog, QMessageBox, \
-    QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QStackedWidget, QTabWidget, QGridLayout, QLabel, QLineEdit, QSlider
+from PySide6.QtCore import Qt, Slot, QThreadPool
+from PySide6.QtGui import QKeyEvent
+from PySide6.QtWidgets import QApplication, QMainWindow, QStatusBar, QMessageBox, \
+    QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QStackedWidget, QTabWidget
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 # Used to fit display into correct resolution
 user32.SetProcessDPIAware()
 
 gui_app = QApplication(sys.argv)
-with open('gui_styles.qss', 'r') as f:
-    style = f.read()
-    # Set the stylesheet of the application
-    gui_app.setStyleSheet(style)
 
 
 class MainWindow(QMainWindow):
@@ -52,7 +46,7 @@ class MainWindow(QMainWindow):
         self.protein_2_name = ""
         self.chain_2 = ""
         self.spatial_proximity = float(self.input_page.param_form_widget.widgets["spatial_proximity"].value())
-        self.dissimilarity = int(self.input_page.param_form_widget.widgets["dissimilarity"].value())
+        self.clust_size = int(self.input_page.param_form_widget.widgets["clust_size"].value())
         self.magnitude = int(self.input_page.param_form_widget.widgets["magnitude"].value())
 
         self.windows = []
@@ -64,8 +58,8 @@ class MainWindow(QMainWindow):
         self.input_page.param_form_widget.widgets["magnitude"].valueChanged.connect(
             lambda: self.param_slider_on_change("magnitude")
         )
-        self.input_page.param_form_widget.widgets["dissimilarity"].valueChanged.connect(
-            lambda: self.param_slider_on_change("dissimilarity")
+        self.input_page.param_form_widget.widgets["clust_size"].valueChanged.connect(
+            lambda: self.param_slider_on_change("clust_size")
         )
 
         self.thread_pool = QThreadPool()
@@ -103,14 +97,14 @@ class MainWindow(QMainWindow):
         self.protein_2_name = self.input_page.file_form_widget.widgets["protein_2_text_box"].text().lower()
         self.chain_2 = self.input_page.file_form_widget.widgets["protein_2_chain_text_box"].text().upper()
         self.spatial_proximity = float(self.input_page.param_form_widget.widgets["spatial_proximity"].value())
-        self.dissimilarity = int(self.input_page.param_form_widget.widgets["dissimilarity"].value())
+        self.clust_size = int(self.input_page.param_form_widget.widgets["clust_size"].value())
         self.magnitude = int(self.input_page.param_form_widget.widgets["magnitude"].value())
 
         print("Building Motion Tree")
         self.statusBar().showMessage("Building Motion Tree")
         new_window = OutputWindow(self.thread_pool, screensize, self.input_path, self.output_path,
                                   self.protein_1_name, self.chain_1, self.protein_2_name, self.chain_2,
-                                  self.spatial_proximity, self.dissimilarity, self.magnitude)
+                                  self.spatial_proximity, self.clust_size, self.magnitude)
         new_window.closed.connect(self.remove_window)
         new_window.show()
         self.windows.append(new_window)
@@ -160,9 +154,6 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         self.quit_app()
-
-
-
 
 
 window = MainWindow(gui_app)

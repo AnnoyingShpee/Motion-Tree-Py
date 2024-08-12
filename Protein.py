@@ -20,7 +20,9 @@ class Protein:
         self.distance_matrix = None
 
     def get_distance_matrix(self):
+        # print(self.utilised_atoms_coords.shape)
         self.distance_matrix = cdist(self.utilised_atoms_coords, self.utilised_atoms_coords, metric="euclidean")
+        # print(self.distance_matrix.shape)
 
     def get_structure(self):
         return gemmi.read_pdb(self.file_path)

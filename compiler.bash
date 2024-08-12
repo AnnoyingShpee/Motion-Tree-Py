@@ -1,0 +1,2 @@
+python -m PyInstaller --distpath . --onefile GUI.py Protein.py BuilderPageGUI.py DataMngr.py MotionTree.py OutputWindowGUI.py HelpPageGUI.py --noconsole
+python -m PyInstaller --distpath . --onefile console_run.py Protein.py DataMngr.py MotionTree.py
