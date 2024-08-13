@@ -1,12 +1,11 @@
 #
 # The inter-residue contact information
 spatial_proximity=7
+# Number of residues in the smaller domain must be above value for a node to be effective.
+small_node=5
 #
-# The default linkage to use for the agglomerative clustering.
-linkage=complete
-#
-# The number of the largest distance differences to average.
-dissimilarity=20
+# The minimum number of residues in a node to be considered effective.
+clust_size=30
 #
 # Minimum Magnitude for domain cutoff
 magnitude=5

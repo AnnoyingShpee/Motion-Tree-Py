@@ -176,10 +176,16 @@ class ParametersFormWidget(QWidget):
                 "default": 7.0,
                 "interval": 0.5
             },
-            "clust_size": {
+            "small_node": {
                 "minimum": 0,
-                "maximum": 30,
+                "maximum": 10,
                 "default": 5,
+                "interval": 1
+            },
+            "clust_size": {
+                "minimum": 10,
+                "maximum": 50,
+                "default": 30,
                 "interval": 1
             },
             "magnitude": {
@@ -191,19 +197,25 @@ class ParametersFormWidget(QWidget):
         }
 
         self.widgets = {
-            "spatial_proximity_label": QLabel("The minimum spatial proximity between the closest residues: "),
+            "spatial_proximity_label": QLabel("The minimum spatial proximity between the closest residues (Default 7): "),
             "spatial_proximity_min_label": QLabel(str(self._widgets_info["spatial_proximity"]["minimum"])),
             "spatial_proximity": DoubleSlider(Qt.Orientation.Horizontal),
             "spatial_proximity_max_label": QLabel(str(self._widgets_info["spatial_proximity"]["maximum"])),
             "spatial_proximity_value": QLabel(str(self._widgets_info["spatial_proximity"]["default"])),
 
-            "clust_size_label": QLabel("The minimum number of residues in a cluster to be considered an effective node: "),
+            "small_node_label": QLabel("Number of residues in the smaller domain must be above value for a node to be effective (Default 5): "),
+            "small_node_min_label": QLabel(str(self._widgets_info["small_node"]["minimum"])),
+            "small_node": DoubleSlider(Qt.Orientation.Horizontal),
+            "small_node_max_label": QLabel(str(self._widgets_info["small_node"]["maximum"])),
+            "small_node_value": QLabel(str(self._widgets_info["small_node"]["default"])),
+
+            "clust_size_label": QLabel("The minimum number of residues in a node to be considered effective (Default 30): "),
             "clust_size_min_label": QLabel(str(self._widgets_info["clust_size"]["minimum"])),
             "clust_size": DoubleSlider(Qt.Orientation.Horizontal),
             "clust_size_max_label": QLabel(str(self._widgets_info["clust_size"]["maximum"])),
             "clust_size_value": QLabel(str(self._widgets_info["clust_size"]["default"])),
 
-            "magnitude_label": QLabel("The minimum magnitude for an effective node: "),
+            "magnitude_label": QLabel("The minimum magnitude for an effective node (Default: 5)"),
             "magnitude_min_label": QLabel(str(self._widgets_info["magnitude"]["minimum"])),
             "magnitude": DoubleSlider(Qt.Orientation.Horizontal),
             "magnitude_max_label": QLabel(str(self._widgets_info["magnitude"]["maximum"])),
@@ -235,6 +247,32 @@ class ParametersFormWidget(QWidget):
         self._spatial_proximity_slider_layout.addWidget(self.widgets["spatial_proximity_max_label"])
         self._spatial_proximity_slider_widget = QWidget()
         self._spatial_proximity_slider_widget.setLayout(self._spatial_proximity_slider_layout)
+
+        self.widgets["small_node"].setMinimum(
+            self._widgets_info["small_node"]["minimum"]
+        )
+        self.widgets["small_node"].setMaximum(
+            self._widgets_info["small_node"]["maximum"]
+        )
+        self.widgets["small_node"].setInterval(
+            self._widgets_info["small_node"]["interval"]
+        )
+        self.widgets["small_node"].setValue(
+            self._widgets_info["small_node"]["default"]
+        )
+
+        self._small_node_label_layout = QHBoxLayout()
+        self._small_node_label_layout.addWidget(self.widgets["small_node_label"])
+        self._small_node_label_layout.addWidget(self.widgets["small_node_value"])
+        self._small_node_label_widget = QWidget()
+        self._small_node_label_widget.setLayout(self._small_node_label_layout)
+
+        self._small_node_slider_layout = QHBoxLayout()
+        self._small_node_slider_layout.addWidget(self.widgets["small_node_min_label"])
+        self._small_node_slider_layout.addWidget(self.widgets["small_node"])
+        self._small_node_slider_layout.addWidget(self.widgets["small_node_max_label"])
+        self._small_node_slider_widget = QWidget()
+        self._small_node_slider_widget.setLayout(self._small_node_slider_layout)
 
         self.widgets["clust_size"].setMinimum(
             self._widgets_info["clust_size"]["minimum"]
@@ -290,6 +328,8 @@ class ParametersFormWidget(QWidget):
 
         self.layout.addWidget(self._spatial_proximity_label_widget)
         self.layout.addWidget(self._spatial_proximity_slider_widget)
+        self.layout.addWidget(self._small_node_label_widget)
+        self.layout.addWidget(self._small_node_slider_widget)
         self.layout.addWidget(self._clust_size_label_widget)
         self.layout.addWidget(self._clust_size_slider_widget)
         self.layout.addWidget(self._magnitude_label_widget)

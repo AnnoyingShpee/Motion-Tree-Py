@@ -11,7 +11,7 @@ from scipy.spatial.distance import cdist
 
 class MotionTree:
     def __init__(self, input_path, output_path, protein_1_name, chain_1, protein_2_name, chain_2,
-                 spat_prox=7.0, clust_size=20, magnitude=5):
+                 spat_prox=7.0, small_node=5, clust_size=30, magnitude=5):
         self.input_path = input_path
         self.output_path = output_path
         self.protein_1_name = protein_1_name
@@ -19,6 +19,7 @@ class MotionTree:
         self.protein_2_name = protein_2_name
         self.chain_2 = chain_2
         self.spat_prox = spat_prox
+        self.small_node = small_node
         self.clust_size = clust_size
         self.magnitude = magnitude
         # Initialise proteins
@@ -250,6 +251,7 @@ class MotionTree:
             self.protein_2.code,
             self.protein_2.chain_param,
             self.spat_prox,
+            self.small_node,
             self.clust_size,
             self.magnitude,
             self.diff_dist_mat_init,
@@ -287,16 +289,17 @@ class MotionTree:
             self.protein_2.code,
             self.protein_2.chain_param,
             self.spat_prox,
+            self.small_node,
             self.clust_size,
             self.magnitude,
             self.link_mat,
             "dendrogram"
         )
-        superimpose_result = write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude)
-        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude, self.nodes)
-        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.clust_size, self.magnitude, self.nodes, superimpose_result)
+        superimpose_result = write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude)
+        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes)
+        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes, superimpose_result)
         proteins_str = f"{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}"
-        params_str = f"sp_{self.spat_prox}_clust_{self.clust_size}_mag_{self.magnitude}"
+        params_str = f"sp_{self.spat_prox}_node_{self.small_node}_clust_{self.clust_size}_mag_{self.magnitude}"
         return round(total_time, 2), len(self.nodes), proteins_str, params_str
 
     def hierarchical_clustering(self, diff_dist_mat, n):
@@ -328,7 +331,9 @@ class MotionTree:
                 else:
                     visited_clusters = np.vstack((visited_clusters, cluster_pair))
                 continue
-            if min_dist >= self.magnitude and len(self.clusters[cluster_pair[0]]) > self.clust_size and len(self.clusters[cluster_pair[1]]) > self.clust_size:
+            clust_1_size = len(self.clusters[cluster_pair[0]])
+            clust_2_size = len(self.clusters[cluster_pair[1]])
+            if min_dist >= self.magnitude and clust_1_size > self.small_node and clust_2_size > self.small_node and (clust_1_size + clust_2_size) >= self.clust_size:
                 self.clusters[cluster_pair[0]].sort()
                 self.clusters[cluster_pair[1]].sort()
                 cluster_0_size = len(self.clusters[cluster_pair[0]])

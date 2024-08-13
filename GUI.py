@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
         self.protein_2_name = ""
         self.chain_2 = ""
         self.spatial_proximity = float(self.input_page.param_form_widget.widgets["spatial_proximity"].value())
+        self.small_node = int(self.input_page.param_form_widget.widgets["small_node"].value())
         self.clust_size = int(self.input_page.param_form_widget.widgets["clust_size"].value())
         self.magnitude = int(self.input_page.param_form_widget.widgets["magnitude"].value())
 
@@ -55,11 +56,14 @@ class MainWindow(QMainWindow):
         self.input_page.param_form_widget.widgets["spatial_proximity"].valueChanged.connect(
             lambda: self.param_slider_on_change("spatial_proximity")
         )
-        self.input_page.param_form_widget.widgets["magnitude"].valueChanged.connect(
-            lambda: self.param_slider_on_change("magnitude")
+        self.input_page.param_form_widget.widgets["small_node"].valueChanged.connect(
+            lambda: self.param_slider_on_change("small_node")
         )
         self.input_page.param_form_widget.widgets["clust_size"].valueChanged.connect(
             lambda: self.param_slider_on_change("clust_size")
+        )
+        self.input_page.param_form_widget.widgets["magnitude"].valueChanged.connect(
+            lambda: self.param_slider_on_change("magnitude")
         )
 
         self.thread_pool = QThreadPool()
@@ -97,6 +101,7 @@ class MainWindow(QMainWindow):
         self.protein_2_name = self.input_page.file_form_widget.widgets["protein_2_text_box"].text().lower()
         self.chain_2 = self.input_page.file_form_widget.widgets["protein_2_chain_text_box"].text().upper()
         self.spatial_proximity = float(self.input_page.param_form_widget.widgets["spatial_proximity"].value())
+        self.small_node = int(self.input_page.param_form_widget.widgets["small_node"].value())
         self.clust_size = int(self.input_page.param_form_widget.widgets["clust_size"].value())
         self.magnitude = int(self.input_page.param_form_widget.widgets["magnitude"].value())
 
@@ -104,7 +109,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Building Motion Tree")
         new_window = OutputWindow(self.thread_pool, screensize, self.input_path, self.output_path,
                                   self.protein_1_name, self.chain_1, self.protein_2_name, self.chain_2,
-                                  self.spatial_proximity, self.clust_size, self.magnitude)
+                                  self.spatial_proximity, self.small_node, self.clust_size, self.magnitude)
         new_window.closed.connect(self.remove_window)
         new_window.show()
         self.windows.append(new_window)
