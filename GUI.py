@@ -89,10 +89,10 @@ class MainWindow(QMainWindow):
             self.create_error_dialog("invalid_text_box", empty_boxes)
             return 1
 
-        if len(self.windows) >= self.max_window_count:
-            self.statusBar().showMessage("Too many windows. Please remove some")
-            self.create_error_dialog("too_many_windows")
-            return 1
+        # if len(self.windows) >= self.max_window_count:
+        #     self.statusBar().showMessage("Too many windows. Please remove some")
+        #     self.create_error_dialog("too_many_windows")
+        #     return 1
 
         self.input_path = self.input_page.file_form_widget.widgets["input_path_text_box"].text()
         self.output_path = self.input_page.file_form_widget.widgets["output_path_text_box"].text()

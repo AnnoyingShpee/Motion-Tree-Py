@@ -360,7 +360,7 @@ def write_info_file(output_path, protein_1, protein_2, spat_prox, small_node, cl
             large_domain = nodes[i]["large_domain"]
             small_domain = nodes[i]["small_domain"]
             large_size = len(large_domain)
-            small_size = len(large_domain)
+            small_size = len(small_domain)
 
             fw.write(f"{protein_1.code} ({protein_1.chain_param})\n")
 

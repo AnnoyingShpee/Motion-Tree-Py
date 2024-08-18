@@ -300,6 +300,7 @@ class MotionTree:
         write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes, superimpose_result)
         proteins_str = f"{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}"
         params_str = f"sp_{self.spat_prox}_node_{self.small_node}_clust_{self.clust_size}_mag_{self.magnitude}"
+        print(total_time)
         return round(total_time, 2), len(self.nodes), proteins_str, params_str
 
     def hierarchical_clustering(self, diff_dist_mat, n):
@@ -397,6 +398,25 @@ class MotionTree:
 
         return list(cluster_pair), np.min(diff_dist_copy)
 
+    # def spatial_proximity_measure(self, cluster_pair):
+    #     """
+    #     From the 2 most similar clusters, checks if the closest Ca atom pair meets the spatial proximity
+    #     :return:
+    #     """
+    #     # print(cluster_pair)
+    #     cluster_1_indices_list = self.clusters[cluster_pair[0]]
+    #     cluster_2_indices_list = self.clusters[cluster_pair[1]]
+    #
+    #     protein_1_cluster_1_coords = self.protein_1.utilised_atoms_coords[cluster_1_indices_list]
+    #     protein_1_cluster_2_coords = self.protein_1.utilised_atoms_coords[cluster_2_indices_list]
+    #     protein_2_cluster_1_coords = self.protein_2.utilised_atoms_coords[cluster_1_indices_list]
+    #     protein_2_cluster_2_coords = self.protein_2.utilised_atoms_coords[cluster_2_indices_list]
+    #
+    #     protein_1_distances = cdist(protein_1_cluster_1_coords, protein_1_cluster_2_coords)
+    #     protein_2_distances = cdist(protein_2_cluster_1_coords, protein_2_cluster_2_coords)
+    #
+    #     return np.min(protein_1_distances) < self.spat_prox and np.min(protein_2_distances) < self.spat_prox
+
     def spatial_proximity_measure(self, cluster_pair):
         """
         From the 2 most similar clusters, checks if the closest Ca atom pair meets the spatial proximity
@@ -406,16 +426,20 @@ class MotionTree:
         cluster_1_indices_list = self.clusters[cluster_pair[0]]
         cluster_2_indices_list = self.clusters[cluster_pair[1]]
 
-        protein_1_cluster_1_coords = self.protein_1.utilised_atoms_coords[cluster_1_indices_list]
-        protein_1_cluster_2_coords = self.protein_1.utilised_atoms_coords[cluster_2_indices_list]
-        protein_2_cluster_1_coords = self.protein_2.utilised_atoms_coords[cluster_1_indices_list]
-        protein_2_cluster_2_coords = self.protein_2.utilised_atoms_coords[cluster_2_indices_list]
+        is_near_1 = False
+        is_near_2 = False
 
-        protein_1_distances = cdist(protein_1_cluster_1_coords, protein_1_cluster_2_coords)
-        protein_2_distances = cdist(protein_2_cluster_1_coords, protein_2_cluster_2_coords)
+        for i in cluster_1_indices_list:
+            for j in cluster_2_indices_list:
+                if self.protein_1.distance_matrix[i, j] < self.spat_prox:
+                    is_near_1 = True
+                if self.protein_2.distance_matrix[i, j] < self.spat_prox:
+                    is_near_2 = True
 
-        return np.min(protein_1_distances) < self.spat_prox and \
-               np.min(protein_2_distances) < self.spat_prox
+            if is_near_1 and is_near_2:
+                break
+
+        return is_near_1 and is_near_2
 
     def update_distance_matrix(self, diff_dist_mat, cluster_pair, new_id):
         """
