@@ -178,7 +178,7 @@ class ParametersFormWidget(QWidget):
             },
             "small_node": {
                 "minimum": 0,
-                "maximum": 10,
+                "maximum": 20,
                 "default": 5,
                 "interval": 1
             },

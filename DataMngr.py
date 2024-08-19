@@ -6,6 +6,7 @@ from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
 from scipy.cluster.hierarchy import dendrogram
+from scipy.spatial import KDTree
 import psycopg2
 import gemmi
 import pickle
@@ -223,7 +224,6 @@ def write_to_pdb(output_path, protein_1, protein_2, spat_prox, small_node, clust
         protein_2_polymer.transform_pos_and_adp(superimpose_result.transform)
 
         atom_count = 1
-        subchain = protein_1.chain_param
         fw.write(f"MODEL{'1'.rjust(9, ' ')}\n")
         for i in util_res_1:
             r = protein_1_polymer[i]
@@ -235,13 +235,12 @@ def write_to_pdb(output_path, protein_1, protein_2, spat_prox, small_node, clust
                 x = str(round(a.pos.x, 3)).rjust(8, " ")
                 y = str(round(a.pos.y, 3)).rjust(8, " ")
                 z = str(round(a.pos.z, 3)).rjust(8, " ")
-                row = f"ATOM  {atom_num} {atom_name} {res_name} {subchain}{res_num}    {x}{y}{z}\n"
+                row = f"ATOM  {atom_num} {atom_name} {res_name} A{res_num}    {x}{y}{z}\n"
                 fw.write(row)
                 atom_count += 1
         fw.write("ENDMDL\n")
 
         atom_count = 1
-        subchain = protein_2.chain_param
         fw.write(f"MODEL{'2'.rjust(9, ' ')}\n")
         for i in util_res_2:
             r = protein_2_polymer[i]
@@ -253,7 +252,7 @@ def write_to_pdb(output_path, protein_1, protein_2, spat_prox, small_node, clust
                 x = str(round(a.pos.x, 3)).rjust(8, " ")
                 y = str(round(a.pos.y, 3)).rjust(8, " ")
                 z = str(round(a.pos.z, 3)).rjust(8, " ")
-                row = f"ATOM  {atom_num} {atom_name} {res_name} {subchain}{res_num}    {x}{y}{z}\n"
+                row = f"ATOM  {atom_num} {atom_name} {res_name} B{res_num}    {x}{y}{z}\n"
                 fw.write(row)
                 atom_count += 1
         fw.write("ENDMDL\n")
@@ -288,51 +287,102 @@ def write_domains_to_pml(output_path, protein_1, protein_2, spat_prox, small_nod
             non_domain = deepcopy(nodes[i]["large_domain"])
             non_domain.extend(small_domain)
 
-            # Colour the large domain
+            # Colour the large domain in protein 1
             large_dom_res = protein_1.get_residue_nums(large_domain)
             groups = group_continuous_num(large_dom_res)
             first_line = True
             for group in groups:
                 if first_line:
-                    fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                    fw.write(f"select region{regions}, node_{node_num} and chain A and resi {group[0]}-{group[-1]}\n")
                     first_line = False
                 else:
-                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and chain A and resi {group[0]}-{group[-1]})\n")
             fw.write(f"set_color colour{regions} = {large_dom_col}\n")
             fw.write(f"color colour{regions}, region{regions}\n")
             fw.write("deselect\n")
-
-            # Colour the small domain
             regions += 1
+
+            # Colour the large domain in protein 2
+            large_dom_res = protein_2.get_residue_nums(large_domain)
+            groups = group_continuous_num(large_dom_res)
+            first_line = True
+            for group in groups:
+                if first_line:
+                    fw.write(
+                        f"select region{regions}, node_{node_num} and chain B and resi {group[0]}-{group[-1]}\n")
+                    first_line = False
+                else:
+                    fw.write(
+                        f"select region{regions}, region{regions} + (node_{node_num} and chain B and resi {group[0]}-{group[-1]})\n")
+            fw.write(f"set_color colour{regions} = {large_dom_col}\n")
+            fw.write(f"color colour{regions}, region{regions}\n")
+            fw.write("deselect\n")
+            regions += 1
+
+            # Colour the small domain in protein 1
             small_dom_res = protein_1.get_residue_nums(small_domain)
             groups = group_continuous_num(small_dom_res)
             first_line = True
             for group in groups:
                 if first_line:
-                    fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                    fw.write(f"select region{regions}, node_{node_num} and chain A and resi {group[0]}-{group[-1]}\n")
                     first_line = False
                 else:
-                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+                    fw.write(f"select region{regions}, region{regions} + (node_{node_num} and chain A and resi {group[0]}-{group[-1]})\n")
             fw.write(f"set_color colour{regions} = {small_dom_col}\n")
             fw.write(f"color colour{regions}, region{regions}\n")
             fw.write("deselect\n")
-
-            # Colour the rest that are not domains as grey
             regions += 1
+
+            # Colour the small domain in protein 2
+            small_dom_res = protein_2.get_residue_nums(small_domain)
+            groups = group_continuous_num(small_dom_res)
+            first_line = True
+            for group in groups:
+                if first_line:
+                    fw.write(
+                        f"select region{regions}, node_{node_num} and chain B and resi {group[0]}-{group[-1]}\n")
+                    first_line = False
+                else:
+                    fw.write(
+                        f"select region{regions}, region{regions} + (node_{node_num} and chain B and resi {group[0]}-{group[-1]})\n")
+            fw.write(f"set_color colour{regions} = {small_dom_col}\n")
+            fw.write(f"color colour{regions}, region{regions}\n")
+            fw.write("deselect\n")
+            regions += 1
+
+            # Colour the rest that are not domains as grey in protein 1
             non_dom_res = protein_1.get_residue_nums(non_domain, utilised=False)
             if len(non_dom_res) > 0:
                 groups = group_continuous_num(non_dom_res)
                 first_line = True
                 for group in groups:
                     if first_line:
-                        fw.write(f"select region{regions}, node_{node_num} and resi {group[0]}-{group[-1]}\n")
+                        fw.write(f"select region{regions}, node_{node_num} and chain A and resi {group[0]}-{group[-1]}\n")
                         first_line = False
                     else:
-                        fw.write(f"select region{regions}, region{regions} + (node_{node_num} and resi {group[0]}-{group[-1]})\n")
+                        fw.write(f"select region{regions}, region{regions} + (node_{node_num} and chain A and resi {group[0]}-{group[-1]})\n")
                 fw.write(f"set_color colour{regions} = {non_dom_col}\n")
                 fw.write(f"color colour{regions}, region{regions}\n")
                 fw.write("deselect\n")
+            regions += 1
 
+            # Colour the rest that are not domains as grey in protein 2
+            non_dom_res = protein_2.get_residue_nums(non_domain, utilised=False)
+            if len(non_dom_res) > 0:
+                groups = group_continuous_num(non_dom_res)
+                first_line = True
+                for group in groups:
+                    if first_line:
+                        fw.write(
+                            f"select region{regions}, node_{node_num} and chain B and resi {group[0]}-{group[-1]}\n")
+                        first_line = False
+                    else:
+                        fw.write(
+                            f"select region{regions}, region{regions} + (node_{node_num} and chain B and resi {group[0]}-{group[-1]})\n")
+                fw.write(f"set_color colour{regions} = {non_dom_col}\n")
+                fw.write(f"color colour{regions}, region{regions}\n")
+                fw.write("deselect\n")
             regions += 1
 
     except Exception as e:

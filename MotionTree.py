@@ -6,7 +6,7 @@ from statistics import mean
 from Protein import Protein
 from DataMngr import conn, ftp_files_to_disk, save_results_to_disk, write_info_file, write_to_pdb, \
     write_domains_to_pml  #, group_continuous_num, check_protein_exists, insert_protein_dist_mat, get_protein_dist_mat,
-from scipy.spatial.distance import cdist
+from difflib import SequenceMatcher
 
 
 class MotionTree:
@@ -60,11 +60,14 @@ class MotionTree:
 
     def check_sequence_identity(self):
         print("Checking Sequence")
+        protein_1_polymer = self.protein_1.get_polymer()
+        protein_2_polymer = self.protein_2.get_polymer()
+
         coords_1, coords_2, utilised_res_ind_1, utilised_res_ind_2, res_names_1, res_names_2 = self.get_ca_atoms_coords()
         # print(res_names_1)
         # print(res_names_2)
         correct_hit = 0
-        # similarity = SequenceMatcher(None, res_names_1, res_names_2).ratio()
+        # self.similarity = SequenceMatcher(None, res_names_1, res_names_2).ratio()
         for i in range(len(res_names_1)):
             if res_names_1[i] == res_names_2[i]:
                 correct_hit += 1
@@ -201,11 +204,17 @@ class MotionTree:
         # Stores the index of the CA atoms in the chains
         utilised_res_ind_1 = []
         utilised_res_ind_2 = []
+
+        if (protein_2_polymer[0].seqid.num - protein_1_polymer[0].seqid.num) > 10:
+            seq_num_diff = protein_2_polymer[0].seqid.num - protein_1_polymer[0].seqid.num
+        else:
+            seq_num_diff = 0
+
         # Stops iterating at the end of the shorter protein chain
         while index_1 < protein_1_size and index_2 < protein_2_size:
             # Get the sequence id number of the residue in the proteins
             res_num_1 = protein_1_polymer[index_1].seqid.num
-            res_num_2 = protein_2_polymer[index_2].seqid.num
+            res_num_2 = protein_2_polymer[index_2].seqid.num - seq_num_diff
             # If the residue number of the
             if res_num_1 < res_num_2:
                 index_1 += 1
