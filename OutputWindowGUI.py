@@ -132,7 +132,7 @@ class OutputWindow(QWidget):
                 save_results_to_disk(self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2,
                                      self.spat_prox, self.small_node, self.clust_size, self.magnitude, diff_dist_mat, "diff_dist_mat")
                 save_results_to_disk(self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2,
-                                     self.spat_prox, self.small_node, self.clust_size, self.magnitude, link_mat, "link_mat")
+                                     self.spat_prox, self.small_node, self.clust_size, self.magnitude, link_mat, "dendrogram")
                 superimpose_result = write_to_pdb(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox,
                                                   self.small_node, self.clust_size, self.magnitude)
                 write_domains_to_pml(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox, self.small_node,
@@ -181,8 +181,10 @@ class OutputWindow(QWidget):
         print("paths", outputs)
         diff_dist_img = QPixmap(outputs[1])
         self.widgets["diff_dist_mat_img"].setPixmap(diff_dist_img)
+        self.widgets["diff_dist_mat_img"].setScaledContents(True)
         motion_tree_img = QPixmap(outputs[2])
         self.widgets["motion_tree_img"].setPixmap(motion_tree_img)
+        self.widgets["motion_tree_img"].setScaledContents(True)
         # self.statusBar().showMessage(f"Time taken {str(msg)}")
 
     def thread_complete(self):

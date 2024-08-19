@@ -6,7 +6,6 @@ from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
 from scipy.cluster.hierarchy import dendrogram
-from scipy.spatial import KDTree
 import psycopg2
 import gemmi
 import pickle
@@ -140,12 +139,13 @@ def save_results_to_disk(output_path, protein_1, chain_1, protein_2, chain_2, sp
         annotated_dendrogram(
             data,
             truncate_mode='lastp',
-            p=12,
+            p=50,
             leaf_rotation=90.,
             leaf_font_size=12.,
             show_contracted=True,
             annotate_above=magnitude,
-            max_d=magnitude
+            max_d=magnitude,
+            show_leaf_counts=True
         )
         plt.savefig(f"{dir_path}/motion_tree.png", dpi=dpi)
     plt.close()

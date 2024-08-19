@@ -172,7 +172,7 @@ class ParametersFormWidget(QWidget):
         self._widgets_info = {
             "spatial_proximity": {
                 "minimum": 4,
-                "maximum": 8,
+                "maximum": 10,
                 "default": 7.0,
                 "interval": 0.5
             },
