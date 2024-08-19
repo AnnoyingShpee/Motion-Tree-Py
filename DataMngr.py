@@ -145,7 +145,7 @@ def save_results_to_disk(output_path, protein_1, chain_1, protein_2, chain_2, sp
             show_contracted=True,
             annotate_above=magnitude,
             max_d=magnitude,
-            show_leaf_counts=True
+            show_leaf_counts=False
         )
         plt.savefig(f"{dir_path}/motion_tree.png", dpi=dpi)
     plt.close()
@@ -177,7 +177,7 @@ def annotated_dendrogram(*args, **kwargs):
             y = d[1]
             if y > annotate_above:
                 plt.plot(x, y, 'o', c=c)
-                plt.annotate("%.3g" % y, (x, y), xytext=(0, -5),
+                plt.annotate("%.2f" % y, (x, y), xytext=(0, -5),
                              textcoords='offset points',
                              va='top', ha='center')
         if max_d:
