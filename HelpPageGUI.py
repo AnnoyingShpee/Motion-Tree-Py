@@ -9,10 +9,10 @@ from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QPushButton, QStatusBar, QFileDialog, QMessageBox, \
     QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QStackedWidget, QTabWidget, QGridLayout, QLabel, QLineEdit, QSlider
 from MotionTree import MotionTree
-from DataMngr import get_motion_tree_outputs
 
 
 class HelpPage(QWidget):
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
+

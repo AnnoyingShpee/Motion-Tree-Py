@@ -17,6 +17,22 @@ class BuilderPage(QWidget):
         self.layout.addWidget(self.build_button)
 
         self.setLayout(self.layout)
+        self.param_form_widget.widgets["spatial_proximity"].valueChanged.connect(
+            lambda: self.param_slider_on_change("spatial_proximity")
+        )
+        self.param_form_widget.widgets["small_node"].valueChanged.connect(
+            lambda: self.param_slider_on_change("small_node")
+        )
+        self.param_form_widget.widgets["clust_size"].valueChanged.connect(
+            lambda: self.param_slider_on_change("clust_size")
+        )
+        self.param_form_widget.widgets["magnitude"].valueChanged.connect(
+            lambda: self.param_slider_on_change("magnitude")
+        )
+
+    def param_slider_on_change(self, param_name):
+        self.param_form_widget.widgets[f"{param_name}_value"].setText(
+            str(self.param_form_widget.widgets[param_name].value()))
 
 
 class FileFormWidget(QWidget):
@@ -98,7 +114,7 @@ class FileFormWidget(QWidget):
             "input_path_text_box": QLineEdit("data/input/pdb"),
             "input_path_button": QPushButton("Choose Folder"),
             "output_path_label": QLabel("Output directory. (The directory where the results are stored)"),
-            "output_path_text_box": QLineEdit("data/output"),
+            "output_path_text_box": QLineEdit("data/output/standard"),
             "output_path_button": QPushButton("Choose Folder"),
             "protein_1_label": QLabel("Protein 1. Give the 4-character code of the protein."),
             "protein_1_text_box": QLineEdit(),
@@ -177,7 +193,7 @@ class ParametersFormWidget(QWidget):
                 "interval": 0.5
             },
             "small_node": {
-                "minimum": 0,
+                "minimum": 1,
                 "maximum": 20,
                 "default": 5,
                 "interval": 1
@@ -334,6 +350,119 @@ class ParametersFormWidget(QWidget):
         self.layout.addWidget(self._clust_size_slider_widget)
         self.layout.addWidget(self._magnitude_label_widget)
         self.layout.addWidget(self._magnitude_slider_widget)
+
+
+class DynDomBuilderPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.file_form_widget = DynDomFileFormWidget()
+        self.param_form_widget = ParametersFormWidget()
+        self.build_button = QPushButton("Build Motion Tree")
+
+        self.layout = QVBoxLayout()
+        self.layout.addLayout(self.file_form_widget.layout)
+        self.layout.addLayout(self.param_form_widget.layout)
+        self.layout.addWidget(self.build_button)
+
+        self.setLayout(self.layout)
+
+        self.param_form_widget.widgets["spatial_proximity"].valueChanged.connect(
+            lambda: self.param_slider_on_change("spatial_proximity")
+        )
+        self.param_form_widget.widgets["small_node"].valueChanged.connect(
+            lambda: self.param_slider_on_change("small_node")
+        )
+        self.param_form_widget.widgets["clust_size"].valueChanged.connect(
+            lambda: self.param_slider_on_change("clust_size")
+        )
+        self.param_form_widget.widgets["magnitude"].valueChanged.connect(
+            lambda: self.param_slider_on_change("magnitude")
+        )
+
+    def param_slider_on_change(self, param_name):
+        self.param_form_widget.widgets[f"{param_name}_value"].setText(
+            str(self.param_form_widget.widgets[param_name].value()))
+
+
+class DynDomFileFormWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("dyndom-file-form")
+        # Initialise the layout to place the widgets
+        self.layout = QGridLayout()
+
+        self._widgets_info = {
+            "input_path_label": {
+                "row": 0,
+                "col": 0
+            },
+            "input_path_text_box": {
+                "row": 1,
+                "col": 0
+            },
+            "input_path_button": {
+                "row": 1,
+                "col": 1
+            },
+            "output_path_label": {
+                "row": 2,
+                "col": 0
+            },
+            "output_path_text_box": {
+                "row": 3,
+                "col": 0
+            },
+            "output_path_button": {
+                "row": 3,
+                "col": 1
+            },
+            "protein_label": {
+                "row": 4,
+                "col": 0
+            },
+            "protein_text_box": {
+                "placeholder": "ADENY3R7",
+                "row": 5,
+                "col": 0
+            }
+        }
+
+        self.widgets = {
+            "input_path_label": QLabel("PDB files directory. (The directory where the files are located)"),
+            "input_path_text_box": QLineEdit("data/input/dyndom_pdb"),
+            "input_path_button": QPushButton("Choose Folder"),
+            "output_path_label": QLabel("Output directory. (The directory where the results are stored)"),
+            "output_path_text_box": QLineEdit("data/output/dyndom"),
+            "output_path_button": QPushButton("Choose Folder"),
+            "protein_label": QLabel("Protein. Give the name of the file of the protein set."),
+            "protein_text_box": QLineEdit()
+        }
+
+        self.widgets["input_path_button"].clicked.connect(
+            lambda: self.on_path_button_click("input_path_text_box")
+        )
+
+        self.widgets["output_path_button"].clicked.connect(
+            lambda: self.on_path_button_click("output_path_text_box")
+        )
+
+        # self._widgets["protein_1_text_box"].setProperty("mandatoryField", True)
+        self.widgets["protein_text_box"].setPlaceholderText(
+            self._widgets_info["protein_text_box"]["placeholder"]
+        )
+
+        for w in self.widgets.keys():
+            self.layout.addWidget(self.widgets[w], self._widgets_info[w]["row"], self._widgets_info[w]["col"])
+
+    def on_path_button_click(self, p):
+        dlg = str(QFileDialog.getExistingDirectory(self, "Select Folder"))
+        cwd = str(Path.cwd()) + "/"
+        cwd = cwd.replace("\\", "/")
+        tokens = dlg.split(cwd)
+        for input_path in tokens:
+            if len(input_path) > 0:
+                self.widgets[p].setText(input_path)
+                break
 
 
 class DoubleSlider(QSlider):

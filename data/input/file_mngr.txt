@@ -8,7 +8,7 @@ output_path=data/output
 protein1=1i6v
 #
 # One-letter code for 1st chain ID if it exists, otherwise leave blank
-chain1id=B
+chain1id=C
 #
 # Write name for 2nd chain, may be the same as first
 protein2=2be5

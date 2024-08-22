@@ -4,14 +4,12 @@ from copy import deepcopy
 from timeit import default_timer
 from statistics import mean
 from Protein import Protein
-from DataMngr import conn, ftp_files_to_disk, save_results_to_disk, write_info_file, write_to_pdb, \
-    write_domains_to_pml  #, group_continuous_num, check_protein_exists, insert_protein_dist_mat, get_protein_dist_mat,
-from difflib import SequenceMatcher
-
+from FileMngr import ftp_files_to_disk, save_results_to_disk, write_info_file, write_to_pdb, write_domains_to_pml, \
+    check_if_dyndom_file_exists, write_to_pdb_dyndom
 
 class MotionTree:
     def __init__(self, input_path, output_path, protein_1_name, chain_1, protein_2_name, chain_2,
-                 spat_prox=7.0, small_node=5, clust_size=30, magnitude=5):
+                 spat_prox=7.0, small_node=5, clust_size=30, magnitude=5, is_dyndom=False):
         self.input_path = input_path
         self.output_path = output_path
         self.protein_1_name = protein_1_name
@@ -27,6 +25,11 @@ class MotionTree:
         self.protein_2 = None
         self.res_nums = []
         self.similarity = 0
+        self.cigar_str = ""
+        self.cigar = []
+        self.match_str_1 = ""
+        self.match_str_2 = ""
+        self.rmsd = 0
         # The starting distance difference matrix
         self.diff_dist_mat_init = None
         self.num_residues = None
@@ -37,121 +40,100 @@ class MotionTree:
         # self.link_mat = np.empty((self.diff_dist_mat_init.shape[0] - 1, 4))
         self.link_mat = None
         self.nodes = {}
+        self.is_dyndom = is_dyndom
         self.is_db_connected = True
 
-        ftp_files_to_disk(self.input_path, self.protein_1_name, self.protein_2_name)
+        if self.protein_2_name is not None:
+            ftp_files_to_disk(self.input_path, self.protein_1_name, self.protein_2_name)
+        else:
+            check_if_dyndom_file_exists(self.input_path, self.protein_1_name)
 
     def init_protein(self, protein_num):
-        print("Init Protein", protein_num)
         if protein_num == 1:
-            self.protein_1 = Protein(
-                input_path=self.input_path,
-                code=self.protein_1_name,
-                chain=self.chain_1
-            )
-            return f"{self.protein_1_name} Initialised"
-        else:
-            self.protein_2 = Protein(
-                input_path=self.input_path,
-                code=self.protein_2_name,
-                chain=self.chain_2
-            )
-            return f"{self.protein_2_name} Initialised"
+            if self.chain_1 is not None:
+                self.protein_1 = Protein(
+                    input_path=self.input_path,
+                    code=self.protein_1_name,
+                    chain=self.chain_1
+                )
+                return f"{self.protein_1_name} ({self.protein_1.chain_param}) Initialised"
+            else:
+                self.protein_1 = Protein(
+                    input_path=self.input_path,
+                    code=self.protein_1_name,
+                    chain="A",
+                    is_dyndom=True
+                )
+                return f"{self.protein_1_name} (B) Initialised"
+        elif protein_num == 2:
+            if self.protein_2_name is not None:
+                self.protein_2 = Protein(
+                    input_path=self.input_path,
+                    code=self.protein_2_name,
+                    chain=self.chain_2
+                )
+                return f"{self.protein_2_name} ({self.protein_2.chain_param}) Initialised"
+            else:
+                self.protein_2 = Protein(
+                    input_path=self.input_path,
+                    code=self.protein_1_name,
+                    chain="B",
+                    is_dyndom=True
+                )
+                return f"{self.protein_1_name} (B) Initialised"
 
-    def check_sequence_identity(self):
+    def check_sequence_identity_standard(self):
+        """
+        Check the sequence identity of the protein chains using sequence alignment from Gemmi
+        :return:
+        """
+        polymer_1_entity: gemmi.Entity = self.protein_1.get_polymer_entity()
+        polymer_2_entity: gemmi.Entity = self.protein_2.get_polymer_entity()
+        print(polymer_1_entity.full_sequence)
+        print(polymer_2_entity.full_sequence)
+        polymer_1 = self.protein_1.get_polymer()
+        polymer_2 = self.protein_2.get_polymer()
+
+        result = gemmi.align_string_sequences(list(gemmi.one_letter_code(polymer_1.extract_sequence())),
+                                              list(gemmi.one_letter_code(polymer_2.extract_sequence())),
+                                              [])
+        if min(result.calculate_identity(1), result.calculate_identity(2)) < 90:
+            raise ValueError("Sequence Identity less than 90%")
+        self.similarity = min(result.calculate_identity(1), result.calculate_identity(2))
+        self.cigar_str = result.cigar_str()
+        self.match_str_1 = result.add_gaps(gemmi.one_letter_code(polymer_1.extract_sequence()), 1)
+        self.match_str_2 = result.add_gaps(gemmi.one_letter_code(polymer_2.extract_sequence()), 2)
+
+    def check_rmsd_standard(self):
+        """
+        Superimposes the entire chain of Protein 2 onto Protein 1 using the Ca atoms to see if the RMSD is more than 2.
+        """
+
+        ptype = self.protein_1.get_polymer().check_polymer_type()
+        chain_superimpose_result: gemmi.SupResult = gemmi.calculate_superposition(self.protein_1.get_polymer(),
+                                                                                  self.protein_2.get_polymer(),
+                                                                                  ptype, gemmi.SupSelect.CaP)
+        # print(chain_superimpose_result.rmsd)
+        if chain_superimpose_result.rmsd < 1:
+            raise ValueError("Proteins RMSD less than 1")
+        self.rmsd = chain_superimpose_result.rmsd
+
+    def preprocessing(self):
         print("Checking Sequence")
-        protein_1_polymer = self.protein_1.get_polymer()
-        protein_2_polymer = self.protein_2.get_polymer()
-
-        coords_1, coords_2, utilised_res_ind_1, utilised_res_ind_2, res_names_1, res_names_2 = self.get_ca_atoms_coords()
-        # print(res_names_1)
-        # print(res_names_2)
-        correct_hit = 0
-        # self.similarity = SequenceMatcher(None, res_names_1, res_names_2).ratio()
-        for i in range(len(res_names_1)):
-            if res_names_1[i] == res_names_2[i]:
-                correct_hit += 1
-        self.similarity = correct_hit / len(res_names_1)
-        print(self.similarity)
-        if self.similarity < 0.4:
-            raise ValueError("Sequence Identity less than 40%")
-
+        if self.is_dyndom:
+            coords_1, coords_2, poses_1, poses_2, utilised_res_ind_1, utilised_res_ind_2 = self.get_ca_atoms_coords_dyndom()
+            chain_superimpose_result = gemmi.superpose_positions(poses_1, poses_2)
+            self.rmsd = chain_superimpose_result.rmsd
+        else:
+            self.check_sequence_identity_standard()
+            self.check_rmsd_standard()
+            coords_1, coords_2, utilised_res_ind_1, utilised_res_ind_2 = self.get_ca_atoms_coords_standard()
         self.num_residues = len(utilised_res_ind_1)
-        print(self.num_residues)
         self.protein_1.utilised_atoms_coords = np.asarray(coords_1)
         self.protein_1.utilised_res_indices = np.asarray(utilised_res_ind_1)
         self.protein_2.utilised_atoms_coords = np.asarray(coords_2)
         self.protein_2.utilised_res_indices = np.asarray(utilised_res_ind_2)
         print("Sequence Checked")
-
-    def check_rmsd(self):
-        """
-        Superimposes the entire chain of Protein 2 onto Protein 1 using the Ca atoms to see if the RMSD is more than 2.
-        """
-        ptype = self.protein_1.get_polymer().check_polymer_type()
-
-        chain_superimpose_result: gemmi.SupResult = gemmi.calculate_superposition(self.protein_1.get_polymer(),
-                                                                                  self.protein_2.get_polymer(),
-                                                                                  ptype, gemmi.SupSelect.CaP)
-        print(chain_superimpose_result.rmsd)
-        if chain_superimpose_result.rmsd < 2:
-            raise ValueError("Proteins RMSD less than 2")
-
-    # def dist_mat_processing(self):
-    #     """
-    #     Handles the distance matrices of the proteins. First connects to the database to see if the proteins with
-    #     the distance matrices exist. If it does not exist, the distance matrix is created and stored into the database.
-    #     If something goes wrong when connecting to the database, go straight to offline data management, which is using
-    #     the disk storage.
-    #     :return:
-    #     """
-    #     while True:
-    #         if conn is None:
-    #             self.is_db_connected = False
-    #             break
-    #         result = check_protein_exists(self.protein_1.code, self.protein_1.chain_param)
-    #         if result == -1:
-    #             self.is_db_connected = False
-    #             break
-    #         elif not result:
-    #             self.protein_1.get_distance_matrix()
-    #             result = insert_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param, self.protein_1.distance_matrix)
-    #             if result == -1:
-    #                 self.is_db_connected = False
-    #                 break
-    #         else:
-    #             result = get_protein_dist_mat(self.protein_1.code, self.protein_1.chain_param)
-    #             if type(result) == int:
-    #                 self.is_db_connected = False
-    #                 self.protein_1.get_distance_matrix()
-    #                 break
-    #             self.protein_1.distance_matrix = result
-    #
-    #         result = check_protein_exists(self.protein_2.code, self.protein_2.chain_param)
-    #         if result == -1:
-    #             self.is_db_connected = False
-    #             break
-    #         elif not result:
-    #             self.protein_2.get_distance_matrix()
-    #             result = insert_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param,
-    #                                              self.protein_2.distance_matrix)
-    #             if result == -1:
-    #                 self.is_db_connected = False
-    #                 break
-    #         else:
-    #             result = get_protein_dist_mat(self.protein_2.code, self.protein_2.chain_param)
-    #             if type(result) == int:
-    #                 self.is_db_connected = False
-    #                 self.protein_2.get_distance_matrix()
-    #                 break
-    #             self.protein_2.distance_matrix = result
-    #         break
-    #
-    #     if not self.is_db_connected and self.protein_1.distance_matrix is None:
-    #         self.protein_1.get_distance_matrix()
-    #         self.protein_2.get_distance_matrix()
-    #     elif not self.is_db_connected and self.protein_2.distance_matrix is None:
-    #         self.protein_2.get_distance_matrix()
 
     def dist_mat_processing(self):
         """
@@ -164,7 +146,7 @@ class MotionTree:
         self.protein_1.get_distance_matrix()
         self.protein_2.get_distance_matrix()
 
-    def get_ca_atoms_coords(self):
+    def get_ca_atoms_coords_standard(self):
         """
         Get the coordinates of CA atoms from the proteins. The CA atoms can only be used if the sequence number of the
         residue the atom is in of Protein 1 and 2 are the same. This is to account for protein chains of different lengths.
@@ -186,6 +168,7 @@ class MotionTree:
         :return utilised_res_ind_1: List of the indices of the residues that are used in Protein 1. Not the sequence ID number.
         :return utilised_res_ind_2: List of the indices of the residues that are used in Protein 2. Not the sequence ID number.
         """
+
         # Get the protein 1 and 2 polymer chains. This excludes residues which are only water.
         protein_1_polymer = self.protein_1.get_polymer()
         protein_2_polymer = self.protein_2.get_polymer()
@@ -193,37 +176,31 @@ class MotionTree:
         protein_1_size = len(protein_1_polymer)
         protein_2_size = len(protein_2_polymer)
         # The indices to iterate the polymers
+        match_index = 0
         index_1 = 0
         index_2 = 0
-        # Stores the residue names
-        res_names_1 = []
-        res_names_2 = []
         # Stores the coordinates of the CA atoms
         atom_coords_1 = []
         atom_coords_2 = []
         # Stores the index of the CA atoms in the chains
         utilised_res_ind_1 = []
         utilised_res_ind_2 = []
-
-        if (protein_2_polymer[0].seqid.num - protein_1_polymer[0].seqid.num) > 10:
-            seq_num_diff = protein_2_polymer[0].seqid.num - protein_1_polymer[0].seqid.num
-        else:
-            seq_num_diff = 0
-
-        # Stops iterating at the end of the shorter protein chain
-        while index_1 < protein_1_size and index_2 < protein_2_size:
-            # Get the sequence id number of the residue in the proteins
-            res_num_1 = protein_1_polymer[index_1].seqid.num
-            res_num_2 = protein_2_polymer[index_2].seqid.num - seq_num_diff
-            # If the residue number of the
-            if res_num_1 < res_num_2:
-                index_1 += 1
-                continue
-            if res_num_2 < res_num_1:
+        while True:
+            if self.match_str_1[match_index] == "-":
                 index_2 += 1
+                match_index += 1
                 continue
+            elif self.match_str_2[match_index] == "-":
+                index_1 += 1
+                match_index += 1
+                continue
+            index_1 += 1
+            index_2 += 1
+            if index_1 >= protein_1_size or index_2 >= protein_2_size:
+                break
             atom_coord_1 = None
             atom_coord_2 = None
+            # print(index_1, index_2)
             for a in protein_1_polymer[index_1]:
                 if a.name == "CA":
                     atom_coord_1 = a.pos.tolist()
@@ -233,32 +210,78 @@ class MotionTree:
                     atom_coord_2 = a.pos.tolist()
                     break
             if atom_coord_1 is not None and atom_coord_2 is not None:
-                res_names_1.append(protein_1_polymer[index_1].name)
-                res_names_2.append(protein_2_polymer[index_2].name)
                 utilised_res_ind_1.append(index_1)
                 utilised_res_ind_2.append(index_2)
                 atom_coords_1.append(atom_coord_1)
                 atom_coords_2.append(atom_coord_2)
-            index_1 += 1
-            index_2 += 1
 
-        return atom_coords_1, atom_coords_2, utilised_res_ind_1, utilised_res_ind_2, res_names_1, res_names_2
+            match_index += 1
+        return atom_coords_1, atom_coords_2, utilised_res_ind_1, utilised_res_ind_2
 
-    def create_distance_difference_matrix(self):
+    def get_ca_atoms_coords_dyndom(self):
+        protein_1_chain = self.protein_1.get_chain()
+        protein_2_chain = self.protein_2.get_chain()
+        atom_coords_1 = []
+        atom_coords_2 = []
+        atom_poses_1 = []
+        atom_poses_2 = []
+        utilised_res_ind_1 = []
+        utilised_res_ind_2 = []
+        seq_diff = protein_2_chain[0].seqid.num - protein_1_chain[0].seqid.num
+        for i in range(len(protein_1_chain)):
+            try:
+                res_1 = protein_1_chain[i]
+                res_2 = protein_2_chain[i]
+                res_1_seq = res_1.seqid.num
+                res_2_seq = res_2.seqid.num - seq_diff
+                if res_1_seq != res_2_seq:
+                    continue
+                atom_coord_1 = None
+                atom_coord_2 = None
+                atom_pos_1 = None
+                atom_pos_2 = None
+                for a in protein_1_chain[i]:
+                    if a.name == "CA":
+                        atom_coord_1 = a.pos.tolist()
+                        atom_pos_1 = a.pos
+                        break
+                for a in protein_2_chain[i]:
+                    if a.name == "CA":
+                        atom_coord_2 = a.pos.tolist()
+                        atom_pos_2 = a.pos
+                        break
+                if atom_coord_1 is not None and atom_coord_2 is not None:
+                    atom_coords_1.append(atom_coord_1)
+                    atom_coords_2.append(atom_coord_2)
+                    atom_poses_1.append(atom_pos_1)
+                    atom_poses_2.append(atom_pos_2)
+                    utilised_res_ind_1.append(i)
+                    utilised_res_ind_2.append(i)
+                else:
+                    continue
+            except Exception as e:
+                print(e)
+                break
+        return atom_coords_1, atom_coords_2, atom_poses_1, atom_poses_2, utilised_res_ind_1, utilised_res_ind_2
+
+    def create_distance_difference_matrix(self, diff_dist_mat=None):
         """
         Get the distance difference matrix by subtracting one matrix with the other. All values must be positive.
         :return:
         """
-        self.diff_dist_mat_init = np.absolute(self.protein_1.distance_matrix - self.protein_2.distance_matrix)
+        if diff_dist_mat is None:
+            self.diff_dist_mat_init = np.absolute(self.protein_1.distance_matrix - self.protein_2.distance_matrix)
+        else:
+            self.diff_dist_mat_init = diff_dist_mat
         self.clusters = {i: [i] for i in range(self.diff_dist_mat_init.shape[0])}
         self.link_mat = np.empty((self.diff_dist_mat_init.shape[0] - 1, 4))
         # Save the difference distance matrix image and array before setting the diagonals to infinity for a cleaner visual.
         save_results_to_disk(
             self.output_path,
-            self.protein_1.code,
-            self.protein_1.chain_param,
-            self.protein_2.code,
-            self.protein_2.chain_param,
+            self.protein_1_name,
+            self.chain_1,
+            self.protein_2_name,
+            self.chain_2,
             self.spat_prox,
             self.small_node,
             self.clust_size,
@@ -293,10 +316,10 @@ class MotionTree:
         # print("Time:", total_time)
         save_results_to_disk(
             self.output_path,
-            self.protein_1.code,
-            self.protein_1.chain_param,
-            self.protein_2.code,
-            self.protein_2.chain_param,
+            self.protein_1_name,
+            self.chain_1,
+            self.protein_2_name,
+            self.chain_2,
             self.spat_prox,
             self.small_node,
             self.clust_size,
@@ -304,10 +327,16 @@ class MotionTree:
             self.link_mat,
             "dendrogram"
         )
-        superimpose_result = write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude)
-        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes)
-        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes, superimpose_result)
-        proteins_str = f"{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}"
+        write_domains_to_pml(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes, self.is_dyndom)
+        write_info_file(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, self.nodes, self.rmsd, self.is_dyndom)
+        if self.is_dyndom:
+            write_to_pdb_dyndom(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node,
+                                self.clust_size, self.magnitude)
+            proteins_str = self.protein_1.code
+        else:
+            write_to_pdb(self.output_path, self.protein_1, self.protein_2, self.spat_prox, self.small_node,
+                         self.clust_size, self.magnitude)
+            proteins_str = f"{self.protein_1.code}_{self.protein_1.chain_param}_{self.protein_2.code}_{self.protein_2.chain_param}"
         params_str = f"sp_{self.spat_prox}_node_{self.small_node}_clust_{self.clust_size}_mag_{self.magnitude}"
         print(total_time)
         return round(total_time, 2), len(self.nodes), proteins_str, params_str
@@ -343,7 +372,7 @@ class MotionTree:
                 continue
             clust_1_size = len(self.clusters[cluster_pair[0]])
             clust_2_size = len(self.clusters[cluster_pair[1]])
-            if min_dist >= self.magnitude and clust_1_size > self.small_node and clust_2_size > self.small_node and (clust_1_size + clust_2_size) >= self.clust_size:
+            if min_dist >= self.magnitude and clust_1_size >= self.small_node and clust_2_size >= self.small_node and (clust_1_size + clust_2_size) >= self.clust_size:
                 self.clusters[cluster_pair[0]].sort()
                 self.clusters[cluster_pair[1]].sort()
                 cluster_0_size = len(self.clusters[cluster_pair[0]])

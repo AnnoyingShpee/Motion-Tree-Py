@@ -1,23 +1,22 @@
 import sys
-import numpy as np
 import traceback
 from PySide6.QtCore import Signal, QObject, QRunnable, Slot
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QLabel
 from MotionTree import MotionTree
-from DataMngr import conn, get_motion_tree_outputs, check_motion_tree_exists, get_motion_tree, \
-    save_results_to_disk, write_info_file, write_to_pdb, write_domains_to_pml, insert_motion_tree, check_nodes_exist, \
-    get_nodes, insert_nodes
+from FileMngr import get_motion_tree_outputs, save_results_to_disk, write_info_file, write_to_pdb, write_domains_to_pml, \
+    write_to_pdb_dyndom
+from DataMngr import conn, check_motion_tree_exists, get_motion_tree, insert_motion_tree, check_nodes_exist, \
+    get_nodes, insert_nodes, check_protein_pair_exists, get_protein_pair, insert_protein_pair
 
 
 class OutputWindow(QWidget):
     closed = Signal(QWidget)
 
-    def __init__(self, thread_pool, screensize, input_path, output_path, protein_1, chain_1, protein_2, chain_2, spat_prox,
-                 small_node, clust_size, magnitude):
+    def __init__(self, thread_pool, screensize, input_path, output_path, protein_1, chain_1=None, protein_2=None,
+                 chain_2=None, spat_prox=7, small_node=5, clust_size=30, magnitude=5):
         super().__init__()
 
-        self.setWindowTitle(f"{protein_1}_{chain_1}_{protein_2}_{chain_2}")
         self.move(screensize[0] * 0.05, screensize[1] * 0.05)
 
         self.thread_pool = thread_pool
@@ -51,17 +50,26 @@ class OutputWindow(QWidget):
 
         combi_layout = QVBoxLayout()
         combi_widget = QWidget()
-        protein_1_label = QLabel(f"Protein 1 : {self.protein_1} ({self.chain_1})")
-        protein_2_label = QLabel(f"Protein 2 : {self.protein_2} ({self.chain_2})")
+        if self.protein_2 is None:
+            self.setWindowTitle(protein_1)
+            protein_1_label = QLabel(f"DynDom Code : {self.protein_1}")
+            combi_layout.addWidget(protein_1_label)
+        else:
+            self.setWindowTitle(f"{protein_1}_{chain_1}_{protein_2}_{chain_2}")
+            protein_1_label = QLabel(f"Protein 1 : {self.protein_1} ({self.chain_1})")
+            protein_2_label = QLabel(f"Protein 2 : {self.protein_2} ({self.chain_2})")
+            combi_layout.addWidget(protein_1_label)
+            combi_layout.addWidget(protein_2_label)
+
         sp_label = QLabel(f"Spatial Proximity : {self.spat_prox}")
-        dis_label = QLabel(f"Cluster Size : {self.clust_size}")
+        node_label = QLabel(f"Small Domain Size : {self.small_node}")
+        clust_label = QLabel(f"Cluster Size : {self.clust_size}")
         mag_label = QLabel(f"Magnitude : {magnitude}")
         self.progress_label = QLabel(f"Progress : Running")
 
-        combi_layout.addWidget(protein_1_label)
-        combi_layout.addWidget(protein_2_label)
         combi_layout.addWidget(sp_label)
-        combi_layout.addWidget(dis_label)
+        combi_layout.addWidget(node_label)
+        combi_layout.addWidget(clust_label)
         combi_layout.addWidget(mag_label)
         combi_layout.addWidget(self.progress_label)
         combi_widget.setLayout(combi_layout)
@@ -93,70 +101,88 @@ class OutputWindow(QWidget):
 
     def build_motion_tree(self, progress_callback):
         print("Motion Tree Test Init")
-        has_motion_tree, has_nodes = -1, -1
+        has_protein_pair, has_motion_tree, has_nodes = -1, -1, -1
+        chain_1 = self.chain_1 if self.chain_1 is not None else "A"
+        protein_2 = self.protein_2 if self.protein_2 is not None else self.protein_1
+        chain_2 = self.chain_2 if self.chain_2 is not None else "B"
+        is_dyndom = False if self.protein_2 is not None else True
         if conn is not None:
-            has_motion_tree = check_motion_tree_exists(self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox)
-            has_nodes = check_nodes_exist(self.protein_1, self.chain_1, self.protein_2, self.chain_2,
+            has_protein_pair = check_protein_pair_exists(self.protein_1, chain_1, protein_2, chain_2)
+            has_motion_tree = check_motion_tree_exists(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox)
+            has_nodes = check_nodes_exist(self.protein_1, chain_1, protein_2, chain_2,
                                           self.spat_prox, self.small_node, self.clust_size, self.magnitude)
         engine = MotionTree(self.input_path, self.output_path, self.protein_1, self.chain_1, self.protein_2,
-                            self.chain_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude)
+                            self.chain_2, self.spat_prox, self.small_node, self.clust_size, self.magnitude, is_dyndom)
         print("Done Tree Class Init")
         progress_callback.emit(f"Initialising {self.protein_1}")
         progress_callback.emit(engine.init_protein(1))
-        progress_callback.emit(f"Initialising {self.protein_2}")
+        progress_callback.emit(f"Initialising {protein_2}")
         progress_callback.emit(engine.init_protein(2))
-        engine.check_sequence_identity()
-        engine.check_rmsd()
+        engine.preprocessing()
+
         while True:
             # If unable to connect to database
-            if has_motion_tree == -1 or has_nodes == -1:
+            if has_protein_pair == -1 or has_motion_tree == -1 or has_nodes == -1:
                 engine.dist_mat_processing()
                 progress_callback.emit("Creating Difference Distance Matrix")
                 engine.create_distance_difference_matrix()
                 progress_callback.emit("Difference Distance Matrix Created")
                 progress_callback.emit("Building Motion Tree")
                 total_time, num_nodes, protein_str, param_str = engine.run()
-                # progress_callback.emit(
-                #     f"Motion Tree {protein_str} built. \nTime taken: {total_time}s. \nNumber of Effective Nodes: {nodes}"
-                # )
-                # print("Checking")
-                # print("Result Callback")
             # If database contains motion tree and nodes
-            elif has_motion_tree and has_nodes:
-                diff_dist_mat, link_mat = get_motion_tree(self.protein_1, self.chain_1, self.protein_2, self.chain_2,
-                                                          self.spat_prox)
-                nodes = get_nodes(self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox,
+            elif has_protein_pair is True and has_motion_tree is True and has_nodes is True:
+                rmsd, diff_dist_mat = get_protein_pair(self.protein_1, chain_1, protein_2, chain_2)
+                link_mat = get_motion_tree(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox)
+                nodes = get_nodes(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox,
                                   self.small_node, self.clust_size, self.magnitude)
-                if type(diff_dist_mat) == int or type(nodes) == int:
+                if type(diff_dist_mat) == int or type(link_mat) == int or type(nodes) == int:
+                    has_protein_pair, has_motion_tree, has_nodes = -1, -1, -1
                     continue
                 save_results_to_disk(self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2,
                                      self.spat_prox, self.small_node, self.clust_size, self.magnitude, diff_dist_mat, "diff_dist_mat")
                 save_results_to_disk(self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2,
                                      self.spat_prox, self.small_node, self.clust_size, self.magnitude, link_mat, "dendrogram")
-                superimpose_result = write_to_pdb(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox,
-                                                  self.small_node, self.clust_size, self.magnitude)
+                if is_dyndom:
+                    write_to_pdb_dyndom(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox,
+                                        self.small_node, self.clust_size, self.magnitude)
+                else:
+                    write_to_pdb(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox,
+                                 self.small_node, self.clust_size, self.magnitude)
+                if self.protein_2 is None:
+                    is_dyndom = True
+                    protein_str = self.protein_1
+                else:
+                    is_dyndom = False
+                    protein_str = f"{self.protein_1}_{self.chain_1}_{self.protein_2}_{self.chain_2}"
                 write_domains_to_pml(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox, self.small_node,
-                                     self.clust_size, self.magnitude, nodes)
+                                     self.clust_size, self.magnitude, nodes, is_dyndom)
                 write_info_file(self.output_path, engine.protein_1, engine.protein_2, self.spat_prox, self.small_node,
-                                self.clust_size, self.magnitude, nodes, superimpose_result)
-                protein_str = f"{self.protein_1}_{self.chain_1}_{self.protein_2}_{self.chain_2}"
+                                self.clust_size, self.magnitude, nodes, rmsd, is_dyndom)
                 param_str = f"sp_{self.spat_prox}_node_{self.small_node}_clust_{self.clust_size}_mag_{self.magnitude}"
                 num_nodes = len(nodes)
             # If database does not contain motion tree
             else:
-                progress_callback.emit("Processing Distance Matrix")
+                progress_callback.emit("Processing Distance Matrices")
                 engine.dist_mat_processing()
                 progress_callback.emit("Creating Difference Distance Matrix")
-                diff_dist_mat = np.copy(engine.create_distance_difference_matrix())
-                progress_callback.emit("Difference Distance Matrix created")
-                progress_callback.emit("Building Motion Tree")
+
+                if has_protein_pair is True:
+                    rmsd, diff_dist_mat = get_protein_pair(self.protein_1, chain_1, protein_2, chain_2)
+                    engine.create_distance_difference_matrix(diff_dist_mat)
+                    is_fail_1 = False
+                else:
+                    engine.create_distance_difference_matrix(None)
+                    is_fail_1 = insert_protein_pair(self.protein_1, chain_1, protein_2, chain_2, engine.rmsd, engine.diff_dist_mat_init)
+                progress_callback.emit("Difference Distance Matrix created. Building Motion Tree")
                 total_time, num_nodes, protein_str, param_str = engine.run()
-                # progress_callback.emit(
-                #     f"Motion Tree {protein_str} built. \nTime taken: {total_time}s. \nNumber of Effective Nodes: {nodes}"
-                # )
-                insert_motion_tree(self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox, engine.similarity, total_time, diff_dist_mat, engine.link_mat, has_motion_tree)
-                insert_nodes(self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox, self.small_node,
-                             self.clust_size, self.magnitude, engine.nodes, has_nodes)
+                is_fail_2 = insert_motion_tree(self.protein_1, chain_1, protein_2, chain_2,
+                                               self.spat_prox, engine.similarity, total_time, engine.link_mat, has_motion_tree)
+                is_fail_3 = insert_nodes(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox,
+                                         self.small_node, self.clust_size, self.magnitude, engine.nodes, has_nodes)
+
+                if is_fail_1 or is_fail_2 or is_fail_3:
+                    has_protein_pair, has_motion_tree, has_nodes = -1, -1, -1
+                    continue
 
             diff_dist_npy, diff_dist_img, motion_tree_img = get_motion_tree_outputs(
                 self.output_path, self.protein_1, self.chain_1, self.protein_2, self.chain_2, self.spat_prox,

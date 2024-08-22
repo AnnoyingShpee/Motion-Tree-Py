@@ -1,0 +1,9 @@
+# The path for storing the pdb files
+input_path=data/input/dyndom_pdb
+#
+# The path for storing the program's output
+output_path=data/dyndom_output
+#
+# Name of the file
+filename=DNADI7R9
+#

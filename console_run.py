@@ -1,17 +1,11 @@
-import sys
-import DataMngr
+import FileMngr
 from MotionTree import MotionTree
-from MotionTree_2 import MotionTree2
-from MotionTree_Init import MotionTreeInit
-from difflib import SequenceMatcher
-import scipy.cluster.hierarchy as sch
-import matplotlib.pyplot as plt
 
 
 def main():
-    files_dict = DataMngr.read_file_paths()
+    files_dict = FileMngr.read_file_paths()
     # Read parameter file to get parameters ( Protein PDB file names, protein chains, window size, domain size, ratio )
-    param_dict = DataMngr.read_param_file()
+    param_dict = FileMngr.read_param_file()
     # Initialise MotionTree object
     # print("Motion Tree Init")
     # engine = MotionTreeInit(files_dict, param_dict)
@@ -28,7 +22,9 @@ def main():
                         param_dict["clust_size"], param_dict["magnitude"])
     engine.init_protein(1)
     engine.init_protein(2)
-    engine.check_sequence_identity()
+    engine.check_rmsd_standard()
+    engine.check_sequence_identity_standard()
+    engine.preprocessing_standard()
     engine.dist_mat_processing()
     engine.create_distance_difference_matrix()
     engine.run()
