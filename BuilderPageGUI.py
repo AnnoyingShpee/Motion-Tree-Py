@@ -41,7 +41,6 @@ class FileFormWidget(QWidget):
         self.setObjectName("file-form")
         # Initialise the layout to place the widgets
         self.layout = QGridLayout()
-
         self._widgets_info = {
             "input_path_label": {
                 "row": 0,

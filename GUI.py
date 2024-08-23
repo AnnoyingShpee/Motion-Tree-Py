@@ -1,11 +1,12 @@
 import sys
 import ctypes
 from BuilderPageGUI import BuilderPage, DynDomBuilderPage
+from HelpPageGUI import HelpPage
 from OutputWindowGUI import OutputWindow
 from PySide6.QtCore import Qt, Slot, QThreadPool
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication, QMainWindow, QStatusBar, QMessageBox, \
-    QVBoxLayout, QHBoxLayout, QStackedLayout, QWidget, QStackedWidget, QTabWidget
+    QVBoxLayout, QWidget, QTabWidget
 from DataMngr import conn
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -26,11 +27,13 @@ class MainWindow(QMainWindow):
         self.standard_builder_page = BuilderPage()
         # self.database_page = DatabasePage()
         self.dyndom_builder_page = DynDomBuilderPage()
+        self.help_page = HelpPage()
 
         self.main_widget = QTabWidget()
         self.layout = QVBoxLayout()
         self.main_widget.addTab(self.standard_builder_page, "Standard")
         self.main_widget.addTab(self.dyndom_builder_page, "DynDom")
+        self.main_widget.addTab(self.help_page, "Help")
 
         self.standard_builder_page.build_button.clicked.connect(self.build_button_on_click)
         self.dyndom_builder_page.build_button.clicked.connect(self.build_button_on_click)
