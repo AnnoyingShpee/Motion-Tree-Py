@@ -137,6 +137,8 @@ def save_results_to_disk(output_path, protein_1, chain_1, protein_2, chain_2, sp
         # Saves the difference distance numpy array into a .npy binary file
         np.save(f"{dir_path}/diff_dist_arr.npy", data)
     elif image_type == "dendrogram":
+        for i in range(data.shape[0]):
+            print(data[i])
         fig_1, axis_1 = plt.subplots()
         axis_1.set_title(f"{proteins_folder}_{params_folder} Motion Tree")
         axis_1.set_xlabel("Residue Number")
@@ -520,3 +522,4 @@ def build_info_dom_res_str(residue_nums):
             domain_res_str = domain_res_str + str(group[0]).ljust(3, ' ')
 
     return domain_res_str
+
