@@ -32,17 +32,6 @@ try:
 except Exception as e:
     print(e)
 
-# try:
-#     cur.execute(
-#         """
-#         DELETE FROM proteins WHERE protein_1='1oj7' OR protein_1='1k9a' OR protein_1='4ake' OR protein_1='2nxn';
-#         """
-#     )
-#
-# except Exception as e:
-#     traceback.print_exc()
-#     print(e)
-
 
 def check_protein_pair_exists(protein_1, chain_1, protein_2, chain_2):
     try:

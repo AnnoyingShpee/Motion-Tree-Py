@@ -118,7 +118,7 @@ class MotionTree:
         chain_superimpose_result: gemmi.SupResult = gemmi.calculate_superposition(self.protein_1.get_polymer(),
                                                                                   self.protein_2.get_polymer(),
                                                                                   ptype, gemmi.SupSelect.CaP)
-        # print(chain_superimpose_result.rmsd)
+        print(chain_superimpose_result.rmsd)
         if chain_superimpose_result.rmsd < 1:
             raise ValueError("Proteins RMSD less than 1")
         self.rmsd = chain_superimpose_result.rmsd
@@ -282,6 +282,7 @@ class MotionTree:
             self.diff_dist_mat_init = diff_dist_mat
         self.clusters = {i: [i] for i in range(self.diff_dist_mat_init.shape[0])}
         self.link_mat = np.empty((self.diff_dist_mat_init.shape[0] - 1, 4))
+
         # print(len(self.match_str_1), len(self.match_str_2))
         # print(len(self.clusters))
         # print(self.diff_dist_mat_init.shape[0])
@@ -457,11 +458,14 @@ class MotionTree:
         :return:
         """
         # print(cluster_pair)
-        cluster_1_indices_list = self.clusters[cluster_pair[0]]
-        cluster_2_indices_list = self.clusters[cluster_pair[1]]
+        try:
+            cluster_1_indices_list = self.clusters[cluster_pair[0]]
+            cluster_2_indices_list = self.clusters[cluster_pair[1]]
+        except KeyError as e:
+            raise KeyError("Spatial Proximity too low to merge clusters ")
 
-        # cluster_1_indices_list.sort()
-        # cluster_2_indices_list.sort()
+        cluster_1_indices_list.sort()
+        cluster_2_indices_list.sort()
 
         # print(len(cluster_1_indices_list) + len(cluster_2_indices_list))
         # print(self.protein_1.utilised_res_indices)
@@ -472,19 +476,28 @@ class MotionTree:
         is_near_1 = False
         is_near_2 = False
 
+        smallest_1 = np.inf
+        smallest_2 = np.inf
+
         for i in cluster_1_indices_list:
             for j in cluster_2_indices_list:
+                if self.protein_1.distance_matrix[i, j] < smallest_1:
+                    smallest_1 = self.protein_1.distance_matrix[i, j]
+                if self.protein_2.distance_matrix[i, j] < smallest_2:
+                    smallest_2 = self.protein_2.distance_matrix[i, j]
                 if self.protein_1.distance_matrix[i, j] < self.spat_prox:
                     is_near_1 = True
                 if self.protein_2.distance_matrix[i, j] < self.spat_prox:
                     is_near_2 = True
-                # print("spat prox", len(self.protein_1.distance_matrix), "clust pair", (i, j), "Len", self.protein_1.distance_matrix.shape)
-                # print("1", self.protein_1.distance_matrix[i, j], "2", self.protein_2.distance_matrix[i, j])
 
                 if is_near_1 and is_near_2:
                     break
             if is_near_1 and is_near_2:
                 break
+
+        # print(cluster_1_indices_list)
+        # print(cluster_2_indices_list)
+        # print(smallest_1, smallest_2)
 
         return is_near_1 and is_near_2
 

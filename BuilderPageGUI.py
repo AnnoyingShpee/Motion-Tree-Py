@@ -187,7 +187,7 @@ class ParametersFormWidget(QWidget):
         self._widgets_info = {
             "spatial_proximity": {
                 "minimum": 4,
-                "maximum": 10,
+                "maximum": 30,
                 "default": 7.0,
                 "interval": 0.5
             },
@@ -212,13 +212,13 @@ class ParametersFormWidget(QWidget):
         }
 
         self.widgets = {
-            "spatial_proximity_label": QLabel("The minimum spatial proximity between the closest residues (Default 7): "),
+            "spatial_proximity_label": QLabel("The maximum spatial proximity between the closest residues (Default 7): "),
             "spatial_proximity_min_label": QLabel(str(self._widgets_info["spatial_proximity"]["minimum"])),
             "spatial_proximity": DoubleSlider(Qt.Orientation.Horizontal),
             "spatial_proximity_max_label": QLabel(str(self._widgets_info["spatial_proximity"]["maximum"])),
             "spatial_proximity_value": QLabel(str(self._widgets_info["spatial_proximity"]["default"])),
 
-            "small_node_label": QLabel("Number of residues in the smaller domain must be above value for a node to be effective (Default 5): "),
+            "small_node_label": QLabel("Minimum number of residues in the smaller domain for a node to be effective (Default 5): "),
             "small_node_min_label": QLabel(str(self._widgets_info["small_node"]["minimum"])),
             "small_node": DoubleSlider(Qt.Orientation.Horizontal),
             "small_node_max_label": QLabel(str(self._widgets_info["small_node"]["maximum"])),

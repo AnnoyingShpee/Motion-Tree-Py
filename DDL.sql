@@ -3,9 +3,9 @@ SET SEARCH_PATH TO motion_tree_py, public;
 
 
 CREATE TABLE IF NOT EXISTS proteins (
-	protein_1		VARCHAR(8),
+	protein_1		VARCHAR(15),
 	chain_1			CHAR(1),
-	protein_2		VARCHAR(8),
+	protein_2		VARCHAR(15),
 	chain_2			CHAR(1),
 	protein_name    VARCHAR(100),
 	rmsd            DECIMAL,
@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS proteins (
 );
 
 CREATE TABLE IF NOT EXISTS motion_trees (
-	protein_1		    VARCHAR(8),
+	protein_1		    VARCHAR(15),
 	chain_1			    CHAR(1),
-	protein_2		    VARCHAR(8),
+	protein_2		    VARCHAR(15),
 	chain_2			    CHAR(1),
 	spatial_proximity	DECIMAL,
 	sequence_identity   DECIMAL,
@@ -25,12 +25,13 @@ CREATE TABLE IF NOT EXISTS motion_trees (
 	PRIMARY KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity),
 	FOREIGN KEY (protein_1, chain_1, protein_2, chain_2)
 	REFERENCES proteins (protein_1, chain_1, protein_2, chain_2)
+	ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS nodes (
-	protein_1		    VARCHAR(8),
+	protein_1		    VARCHAR(15),
 	chain_1			    CHAR(1),
-	protein_2		    VARCHAR(8),
+	protein_2		    VARCHAR(15),
 	chain_2			    CHAR(1),
 	spatial_proximity	DECIMAL,
 	small_node_size     SMALLINT,
