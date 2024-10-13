@@ -19,10 +19,11 @@ CREATE TABLE IF NOT EXISTS motion_trees (
 	protein_2		    VARCHAR(15),
 	chain_2			    CHAR(1),
 	spatial_proximity	DECIMAL,
+	cluster_size        SMALLINT,
 	sequence_identity   DECIMAL,
 	time_taken          DECIMAL,
 	link_mat            BYTEA,
-	PRIMARY KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity),
+	PRIMARY KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity, cluster_size),
 	FOREIGN KEY (protein_1, chain_1, protein_2, chain_2)
 	REFERENCES proteins (protein_1, chain_1, protein_2, chain_2)
 	ON UPDATE CASCADE ON DELETE CASCADE
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS nodes (
 	large_domain        BYTEA,
 	small_domain        BYTEA,
 	PRIMARY KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity, small_node_size, cluster_size, magnitude, node),
-	FOREIGN KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity)
-	REFERENCES motion_tree (protein_1, chain_1, protein_2, chain_2, spatial_proximity)
+	FOREIGN KEY (protein_1, chain_1, protein_2, chain_2, spatial_proximity, cluster_size)
+	REFERENCES motion_tree (protein_1, chain_1, protein_2, chain_2, spatial_proximity, cluster_size)
 	ON UPDATE CASCADE ON DELETE CASCADE
 );

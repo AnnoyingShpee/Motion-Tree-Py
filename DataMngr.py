@@ -32,6 +32,12 @@ try:
 except Exception as e:
     print(e)
 
+# cur.execute(
+#     """
+#     DELETE FROM proteins WHERE protein_1='4ake' or protein_1='ADENY3R7' or protein_1='ADENY3R6'
+#     """
+# )
+
 
 def check_protein_pair_exists(protein_1, chain_1, protein_2, chain_2):
     try:
@@ -86,16 +92,16 @@ def get_protein_pair(protein_1, chain_1, protein_2, chain_2):
         return -1, -1
 
 
-def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox):
+def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size):
     try:
         cur.execute(
             """
             SELECT EXISTS(
             SELECT 1 FROM motion_trees WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND 
-            spatial_proximity=%s
+            spatial_proximity=%s AND cluster_size=%s
             )
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
         )
         row = cur.fetchone()
         return row[0]
@@ -105,14 +111,15 @@ def check_motion_tree_exists(protein_1, chain_1, protein_2, chain_2, spat_prox):
         return -1
 
 
-def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox):
+def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size):
     try:
         cur.execute(
             """
             SELECT link_mat FROM motion_trees
-            WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s;
+            WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s 
+            AND cluster_size=%s;
             """,
-            (protein_1, chain_1, protein_2, chain_2, spat_prox)
+            (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
         )
         row = cur.fetchone()
         link_mat = pickle.loads(row[0])
@@ -123,7 +130,7 @@ def get_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox):
         return -1
 
 
-def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, seq_identity, time_taken, link_mat, motion_tree_exist):
+def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, seq_identity, time_taken, link_mat, motion_tree_exist):
     try:
         link_bin = pickle.dumps(link_mat)
         if motion_tree_exist:
@@ -131,17 +138,18 @@ def insert_motion_tree(protein_1, chain_1, protein_2, chain_2, spat_prox, seq_id
                 """
                 UPDATE motion_trees 
                 SET time_taken=%s, link_mat=%s
-                WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s;
+                WHERE protein_1=%s AND chain_1=%s AND protein_2=%s AND chain_2=%s AND spatial_proximity=%s
+                AND cluster_size=%s;
                 """,
-                (round(time_taken, 2), link_bin, protein_1, chain_1, protein_2, chain_2, spat_prox)
+                (round(time_taken, 2), link_bin, protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size)
             )
         else:
             cur.execute(
                 """
                 INSERT INTO motion_trees
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
                 """,
-                (protein_1, chain_1, protein_2, chain_2, spat_prox, round(seq_identity, 2), round(time_taken, 2), link_bin)
+                (protein_1, chain_1, protein_2, chain_2, spat_prox, clust_size, round(seq_identity, 2), round(time_taken, 2), link_bin)
             )
         return 0
     except Exception as e:

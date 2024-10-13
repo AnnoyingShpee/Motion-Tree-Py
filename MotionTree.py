@@ -106,8 +106,8 @@ class MotionTree:
         self.match_str_1 = result.add_gaps(gemmi.one_letter_code(polymer_1.extract_sequence()), 1)
         self.match_str_2 = result.add_gaps(gemmi.one_letter_code(polymer_2.extract_sequence()), 2)
         # print(self.cigar_str)
-        # print(self.match_str_1)
-        # print(self.match_str_2)
+        print(self.match_str_1)
+        print(self.match_str_2)
 
     def check_rmsd_standard(self):
         """
@@ -237,12 +237,6 @@ class MotionTree:
         seq_diff = protein_2_chain[0].seqid.num - protein_1_chain[0].seqid.num
         for i in range(len(protein_1_chain)):
             try:
-                res_1 = protein_1_chain[i]
-                res_2 = protein_2_chain[i]
-                res_1_seq = res_1.seqid.num
-                res_2_seq = res_2.seqid.num - seq_diff
-                if res_1_seq != res_2_seq:
-                    continue
                 atom_coord_1 = None
                 atom_coord_2 = None
                 atom_pos_1 = None
@@ -387,7 +381,7 @@ class MotionTree:
             clust_1_size = len(self.clusters[cluster_pair[0]])
             clust_2_size = len(self.clusters[cluster_pair[1]])
 
-            if min_dist >= self.magnitude and clust_1_size > self.small_node and clust_2_size > self.small_node and (clust_1_size + clust_2_size) >= self.clust_size:
+            if min_dist >= self.magnitude and clust_1_size > self.small_node and clust_2_size > self.small_node and (clust_1_size + clust_2_size) >= 30:
                 # print("Hit")
                 self.clusters[cluster_pair[0]].sort()
                 self.clusters[cluster_pair[1]].sort()
@@ -514,7 +508,6 @@ class MotionTree:
         new_distance_matrix = np.r_[new_distance_matrix, np.full((1, new_distance_matrix.shape[1]), np.inf)]
         new_distance_matrix[cluster_pair, :] = np.inf
         new_distance_matrix[:, cluster_pair] = np.inf
-        diss_count = 20
         for k in self.clusters.keys():
             # Ignore the cluster pairs
             if k != cluster_pair[0] and k != cluster_pair[1]:
@@ -523,11 +516,11 @@ class MotionTree:
                 # print(k, new_id)
                 dists = self.get_diff_distances(self.clusters[k], self.clusters[new_id])
                 # dists = []
-                # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[0]]))
-                # dists.extend(self.get_diff_disterences(self.clusters[k], self.clusters[cluster_pair[1]]))
-                if len(dists) > diss_count:
+                # dists.extend(self.get_diff_distances(self.clusters[k], self.clusters[cluster_pair[0]]))
+                # dists.extend(self.get_diff_distances(self.clusters[k], self.clusters[cluster_pair[1]]))
+                if len(dists) > self.clust_size:
                     dists.sort(reverse=True)
-                    new_distance_matrix[new_id, k] = mean(dists[:diss_count])
+                    new_distance_matrix[new_id, k] = mean(dists[:self.clust_size])
                 else:
                     new_distance_matrix[new_id, k] = mean(dists)
                 new_distance_matrix[k, new_id] = new_distance_matrix[new_id, k]

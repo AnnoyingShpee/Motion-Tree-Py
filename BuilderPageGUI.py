@@ -200,7 +200,7 @@ class ParametersFormWidget(QWidget):
             "clust_size": {
                 "minimum": 10,
                 "maximum": 50,
-                "default": 30,
+                "default": 20,
                 "interval": 1
             },
             "magnitude": {
@@ -224,7 +224,7 @@ class ParametersFormWidget(QWidget):
             "small_node_max_label": QLabel(str(self._widgets_info["small_node"]["maximum"])),
             "small_node_value": QLabel(str(self._widgets_info["small_node"]["default"])),
 
-            "clust_size_label": QLabel("The minimum number of residues in a node to be considered effective (Default 30): "),
+            "clust_size_label": QLabel("The number of distance differences to average when residues more than value (Default 20): "),
             "clust_size_min_label": QLabel(str(self._widgets_info["clust_size"]["minimum"])),
             "clust_size": DoubleSlider(Qt.Orientation.Horizontal),
             "clust_size_max_label": QLabel(str(self._widgets_info["clust_size"]["maximum"])),

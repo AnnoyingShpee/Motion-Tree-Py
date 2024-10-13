@@ -108,7 +108,7 @@ class OutputWindow(QWidget):
         is_dyndom = False if self.protein_2 is not None else True
         if conn is not None:
             has_protein_pair = check_protein_pair_exists(self.protein_1, chain_1, protein_2, chain_2)
-            has_motion_tree = check_motion_tree_exists(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox)
+            has_motion_tree = check_motion_tree_exists(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox, self.clust_size)
             has_nodes = check_nodes_exist(self.protein_1, chain_1, protein_2, chain_2,
                                           self.spat_prox, self.small_node, self.clust_size, self.magnitude)
         engine = MotionTree(self.input_path, self.output_path, self.protein_1, self.chain_1, self.protein_2,
@@ -132,7 +132,7 @@ class OutputWindow(QWidget):
             # If database contains motion tree and nodes
             elif has_protein_pair is True and has_motion_tree is True and has_nodes is True:
                 rmsd, diff_dist_mat = get_protein_pair(self.protein_1, chain_1, protein_2, chain_2)
-                link_mat = get_motion_tree(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox)
+                link_mat = get_motion_tree(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox, self.clust_size)
                 nodes = get_nodes(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox,
                                   self.small_node, self.clust_size, self.magnitude)
                 if type(diff_dist_mat) == int or type(link_mat) == int or type(nodes) == int:
@@ -176,7 +176,7 @@ class OutputWindow(QWidget):
                 progress_callback.emit("Difference Distance Matrix created. Building Motion Tree")
                 total_time, num_nodes, protein_str, param_str = engine.run()
                 is_fail_2 = insert_motion_tree(self.protein_1, chain_1, protein_2, chain_2,
-                                               self.spat_prox, engine.similarity, total_time, engine.link_mat, has_motion_tree)
+                                               self.spat_prox, self.clust_size, engine.similarity, total_time, engine.link_mat, has_motion_tree)
                 is_fail_3 = insert_nodes(self.protein_1, chain_1, protein_2, chain_2, self.spat_prox,
                                          self.small_node, self.clust_size, self.magnitude, engine.nodes, has_nodes)
 
